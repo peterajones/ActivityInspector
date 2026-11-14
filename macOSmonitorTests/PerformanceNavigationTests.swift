@@ -13,11 +13,12 @@ struct PerformanceNavigationTests {
         #expect(Surface.summary.sidebarItem == .summary)
         #expect(Surface.processes.sidebarItem == .processes)
         #expect(Surface.ports.sidebarItem == .ports)
+        #expect(Surface.systemInfo.sidebarItem == .systemInfo)
     }
 
     @Test func sidebarListsFourItemsInOrder() {
-        #expect(SidebarItem.allCases == [.summary, .performance, .processes, .ports])
-        #expect(SidebarItem.allCases.map(\.title) == ["Summary", "Performance", "Processes", "Ports"])
+        #expect(SidebarItem.allCases == [.summary, .performance, .processes, .ports, .systemInfo])
+        #expect(SidebarItem.allCases.map(\.title) == ["Summary", "Performance", "Processes", "Ports", "System Info"])
     }
 
     @Test func performanceReopensTheLastMetricViewed() {
@@ -33,6 +34,7 @@ struct PerformanceNavigationTests {
         #expect(SidebarItem.summary.surface(lastMetric: .network, available: available) == .summary)
         #expect(SidebarItem.processes.surface(lastMetric: .network, available: available) == .processes)
         #expect(SidebarItem.ports.surface(lastMetric: .network, available: available) == .ports)
+        #expect(SidebarItem.systemInfo.surface(lastMetric: .network, available: available) == .systemInfo)
     }
 }
 

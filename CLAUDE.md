@@ -5,12 +5,20 @@ table with an inspector, a Ports table, and a Performance section. A menu-bar it
 optional root helper for other users' processes. Five themes; meters are segmented LED bars.
 
 **Navigation (2026-11-14):** the sidebar lists `SidebarItem`s (Summary, Performance, Processes,
-Ports). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
+Ports, System Info). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
 Disk, Thermal, Energy, Battery, each where this Mac reports it) beside the chosen metric's
 panel. `surface` (a `Surface`) is still the one source of truth for which page shows; every
 metric surface maps to the Performance sidebar item, and choosing Performance reopens the last
 metric viewed. Summary's cards set `surface` to a metric, landing in Performance. The column's
 small graphs are still (paused, no glide); only the panel's graphs glide.
+
+**System Info** is built on `system_profiler -json` (`SystemProfiler.swift`): a catalog of its data
+types under Hardware, Network and Software, Apple's own labels from each reporter's
+`Localizable.loctable`, identifying values (serials, hardware IDs, MAC addresses, user name)
+masked until clicked. `SystemInfoModel` (owned by `ContentView`) preloads the fast types so empty
+ones drop out of the list, and reads the slow ones (Wi-Fi ~20 s, Fonts ~12 s) only when chosen.
+The runner reads the tool's output to end of file on a GCD thread; it never calls
+`waitUntilExit()`.
 Swift 6, SwiftUI, no third-party dependencies.
 
 ## Design status: functionality first, a design round later
@@ -81,6 +89,14 @@ presence (cheap or free, to reinforce him as a developer; he already has an iOS 
     processes (no Ports, open files, disk/energy per process); AppleSMC (`0xe00002e2`); IOReport.
   - **Loads but private (App Review rejects):** the HID thermal client, NetworkStatistics.
   - The root helper is out: App Store apps can't install daemons or escalate.
+- **`system_profiler` in the sandbox (probed 2026-11-14, same method):** it launches, inherits the
+  sandbox and returns JSON; the reporters' `Localizable.loctable` label tables are readable too.
+  Complete: Memory, Audio, NVMe, Storage, Power, USB, Thunderbolt, Ethernet, Network, Locations,
+  Software, Installations, Developer Tools, Printers, Accessibility, Fonts. Reduced: Hardware (no
+  Activation Lock), Displays (no display serial/firmware), Wi-Fi (~20% fewer fields), Applications
+  (397 of 468), Language & Region, Logs (5 of 10), Smart Cards, Firewall (no per-app list).
+  **Empty:** Bluetooth, Camera, Secure Element, Extensions, Configuration Profiles, Legacy Software.
+  Untested risk: whether App Review objects to running a system tool; fallback is public frameworks.
 - So the App Store edition is a **monitor**, not a manager: no Quit/Force Quit, Ports, Energy,
   clock speeds or temperatures (thermal state only), no helper. Ship it after the design round.
 

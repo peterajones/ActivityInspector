@@ -7,7 +7,7 @@ import Foundation
 
 /// The top-level surfaces listed in the sidebar.
 enum Surface: String, CaseIterable, Hashable, Identifiable {
-    case summary, processes, ports, cpu, gpu, memory, network, disk, thermal, energy, battery
+    case summary, processes, ports, systemInfo, cpu, gpu, memory, network, disk, thermal, energy, battery
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum Surface: String, CaseIterable, Hashable, Identifiable {
         case .summary:   return "Summary"
         case .processes: return "Processes"
         case .ports:     return "Ports"
+        case .systemInfo: return "System Info"
         case .cpu:       return "CPU"
         case .gpu:       return "GPU"
         case .memory:    return "Memory"
@@ -38,7 +39,7 @@ enum Surface: String, CaseIterable, Hashable, Identifiable {
         case .thermal:   return .thermal
         case .energy:    return .energy
         case .battery:   return .battery
-        case .summary, .processes, .ports: return nil
+        case .summary, .processes, .ports, .systemInfo: return nil
         }
     }
 

@@ -3,7 +3,7 @@ import Foundation
 /// What the sidebar lists. Every metric page lives under Performance, which opens a column of
 /// metrics beside the chosen one's page.
 enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
-    case summary, performance, processes, ports
+    case summary, performance, processes, ports, systemInfo
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
         case .performance: "Performance"
         case .processes: "Processes"
         case .ports: "Ports"
+        case .systemInfo: "System Info"
         }
     }
 
@@ -22,6 +23,7 @@ enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
         case .performance: "waveform.path.ecg"
         case .processes: "list.bullet"
         case .ports: "network"
+        case .systemInfo: "info.circle"
         }
     }
 
@@ -32,6 +34,7 @@ enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
         case .summary: .summary
         case .processes: .processes
         case .ports: .ports
+        case .systemInfo: .systemInfo
         case .performance: available.contains(lastMetric) ? lastMetric : .cpu
         }
     }
@@ -44,6 +47,7 @@ extension Surface {
         case .summary: .summary
         case .processes: .processes
         case .ports: .ports
+        case .systemInfo: .systemInfo
         case .cpu, .gpu, .memory, .network, .disk, .thermal, .energy, .battery: .performance
         }
     }
@@ -83,7 +87,7 @@ struct PerformanceRow: Equatable, Sendable {
             } else {
                 (detail, value) = ("", "—")
             }
-        case .summary, .processes, .ports:
+        case .summary, .processes, .ports, .systemInfo:
             (detail, value) = ("", "")
         }
     }

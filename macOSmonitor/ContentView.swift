@@ -20,6 +20,8 @@ struct ContentView: View {
     @AppStorage(Bloom.storageKey) private var bloomLevel = Bloom.defaultLevel
     @AppStorage(SaturationLevel.storageKey) private var saturationLevel = SaturationLevel.defaultLevel
     @State private var showsColours = false
+    /// What System Info has read, kept here so returning to the page doesn't read it all again.
+    @State private var systemInfoModel = SystemInfoModel()
     /// Whether this window can be seen; its graphs stop animating while it can't.
     @State private var windowVisible = true
 
@@ -102,6 +104,8 @@ struct ContentView: View {
                               searchText: $portsSearchText,
                               filter: $portsFilter,
                               sortOrder: $portsSortOrder)
+                case .systemInfo:
+                    SystemInfoView(model: systemInfoModel)
                 // One branch for every metric page, so the Performance column keeps its
                 // identity (and scroll position) while the page beside it changes.
                 case .cpu, .gpu, .memory, .network, .disk, .thermal, .energy, .battery:
