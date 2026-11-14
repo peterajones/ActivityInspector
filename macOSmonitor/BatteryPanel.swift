@@ -36,57 +36,25 @@ struct BatteryPanel: View {
     @Environment(\.theme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Battery").font(.title2).foregroundStyle(theme.primaryText)
-                Spacer()
-                Text(model.info?.displayText ?? "—")
-                    .font(.title2)
-                    .monospacedDigit()
-                    .foregroundStyle(theme.primaryText)
+        PanelPage(title: "Battery",
+                  subtitle: model.info.map { SummaryTile.battery($0).detail } ?? "",
+                  metric: .battery,
+                  fraction: Double(model.info?.chargePercent ?? 0) / 100,
+                  value: model.info.map { "\($0.chargePercent)%" } ?? "—") {
+            GraphSection(label: "Charge · last 24 hours, while macOSmonitor was running",
+                         note: model.history.hasOnPowerTime ? "bar below graph = on power" : nil) {
+                BatteryHistoryGraph(segments: model.history.segments, now: Date(),
+                                    lineColor: theme.color(for: .battery), fillColor: theme.fillColor(for: .battery),
+                                    gridColor: theme.gridLine)
             }
-
-            BatteryHistoryGraph(segments: model.history.segments, now: Date(),
-                                lineColor: theme.color(for: .battery), fillColor: theme.fillColor(for: .battery),
-                                gridColor: theme.gridLine)
-                .frame(minHeight: 180)
-
-            HStack {
-                Text("Last 24 hours, while macOSmonitor was running")
-                Spacer()
-                // A key, not a status: worded so it can't be read as "on power now", and only
-                // shown when there is a bar for it to explain.
-                if model.history.hasOnPowerTime {
-                    HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 1).fill(theme.color(for: .battery)).frame(width: 12, height: 4)
-                        Text("Bar below graph = on power")
-                    }
-                }
-            }
-            .font(.caption2)
-            .foregroundStyle(theme.secondaryText)
-
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
-                fact("Status", BatteryModel.statusText(model.info))
-                fact("Maximum Capacity", model.health?.maximumCapacityText ?? "—")
-                fact("Cycle Count", model.health?.cycleCountText ?? "—")
-                fact("Full Charge", model.health?.capacityText ?? "—")
-                fact("Temperature", model.health?.temperatureText ?? "—")
-                fact("Power", model.health?.powerText ?? "—")
-            }
-            .padding(.top, 8)
-
-            Spacer()
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(theme.panelBackground)
-    }
-
-    private func fact(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(theme.secondaryText)
-            Text(value).monospacedDigit().foregroundStyle(theme.primaryText)
+            FigureGrid(figures: [
+                Figure(label: "Status", value: BatteryModel.statusText(model.info)),
+                Figure(label: "Maximum capacity", value: model.health?.maximumCapacityText ?? "—"),
+                Figure(label: "Cycle count", value: model.health?.cycleCountText ?? "—"),
+                Figure(label: "Full charge", value: model.health?.capacityText ?? "—"),
+                Figure(label: "Temperature", value: model.health?.temperatureText ?? "—"),
+                Figure(label: "Power", value: model.health?.powerText ?? "—"),
+            ])
         }
     }
 }

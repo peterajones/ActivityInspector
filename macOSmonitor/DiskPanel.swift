@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Disk Performance panel: read and write throughput sharing one autoscaled axis.
+/// The Disk Performance page: read and write throughput sharing one autoscaled axis.
 struct DiskPanel: View {
     let model: VitalsModel
     @Environment(\.theme) private var theme
@@ -10,47 +10,30 @@ struct DiskPanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Disk").font(.title2).foregroundStyle(theme.primaryText)
-                Spacer()
-                Text(throughputText)
-                    .font(.title2)
-                    .monospacedDigit()
-                    .foregroundStyle(theme.primaryText)
+        PanelPage(.disk, model: model) {
+            GraphSection(label: "Transfer rate · last 60 s", note: "scale \(scaleLabel)") {
+                ZStack {
+                    MetricGraph(values: model.history.diskRead.values, range: range,
+                                lineColor: theme.color(for: .disk), fillColor: theme.fillColor(for: .disk),
+                                gridColor: theme.gridLine,
+                                timeAxis: CompressedTimeAxis(history: model.history.diskRead, lastSample: model.lastSampleDate))
+                    MetricGraph(values: model.history.diskWrite.values, range: range,
+                                lineColor: theme.secondaryText, fillColor: .clear,
+                                gridColor: .clear,
+                                timeAxis: CompressedTimeAxis(history: model.history.diskWrite, lastSample: model.lastSampleDate),
+                                showsBorder: false)
+                }
             }
-
-            ZStack {
-                MetricGraph(values: model.history.diskRead.values, range: range,
-                            lineColor: theme.color(for: .disk), fillColor: theme.fillColor(for: .disk),
-                            gridColor: theme.gridLine,
-                            timeAxis: CompressedTimeAxis(history: model.history.diskRead, lastSample: model.lastSampleDate))
-                MetricGraph(values: model.history.diskWrite.values, range: range,
-                            lineColor: theme.secondaryText, fillColor: .clear,
-                            gridColor: .clear,
-                            timeAxis: CompressedTimeAxis(history: model.history.diskWrite, lastSample: model.lastSampleDate),
-                            showsBorder: false)
+            HStack(spacing: 14) {
+                Label("Read", systemImage: "arrow.down").foregroundStyle(theme.color(for: .disk))
+                Label("Write", systemImage: "arrow.up").foregroundStyle(theme.secondaryText)
             }
-            .frame(minHeight: 180)
-
-            HStack {
-                Text("scale: \(scaleLabel)")
-                Spacer()
-                Label("Read", systemImage: "arrow.down")
-                Label("Write", systemImage: "arrow.up")
-            }
-            .font(.caption2)
-            .foregroundStyle(theme.secondaryText)
-
-            Spacer()
+            .font(.caption)
+            FigureGrid(figures: [
+                Figure(label: "Read", value: SystemVitals.rate(model.vitals?.diskReadBytesPerSec ?? 0)),
+                Figure(label: "Write", value: SystemVitals.rate(model.vitals?.diskWriteBytesPerSec ?? 0)),
+            ])
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(theme.panelBackground)
-    }
-
-    private var throughputText: String {
-        model.vitals?.diskText ?? "—"
     }
 
     private var scaleLabel: String {

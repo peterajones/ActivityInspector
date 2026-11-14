@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The Network Performance panel: received and sent, sharing one autoscaled axis.
+/// The Network Performance page: received and sent, sharing one autoscaled axis, then each
+/// interface.
 struct NetworkPanel: View {
     let model: VitalsModel
     @Environment(\.theme) private var theme
@@ -10,42 +11,33 @@ struct NetworkPanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Network").font(.title2).foregroundStyle(theme.primaryText)
-                Spacer()
-                Text(model.vitals?.networkText ?? "—")
-                    .font(.title2)
-                    .monospacedDigit()
-                    .foregroundStyle(theme.primaryText)
+        PanelPage(.network, model: model) {
+            GraphSection(label: "Throughput · last 60 s", note: "scale \(scaleLabel)") {
+                ZStack {
+                    MetricGraph(values: model.history.networkIn.values,
+                                range: range,
+                                lineColor: theme.color(for: .network),
+                                fillColor: theme.fillColor(for: .network),
+                                gridColor: theme.gridLine,
+                                timeAxis: CompressedTimeAxis(history: model.history.networkIn, lastSample: model.lastSampleDate))
+                    MetricGraph(values: model.history.networkOut.values,
+                                range: range,
+                                lineColor: theme.secondaryText,
+                                fillColor: .clear,
+                                gridColor: .clear,
+                                timeAxis: CompressedTimeAxis(history: model.history.networkOut, lastSample: model.lastSampleDate),
+                                showsBorder: false)
+                }
             }
-
-            ZStack {
-                MetricGraph(values: model.history.networkIn.values,
-                            range: range,
-                            lineColor: theme.color(for: .network),
-                            fillColor: theme.fillColor(for: .network),
-                            gridColor: theme.gridLine,
-                            timeAxis: CompressedTimeAxis(history: model.history.networkIn, lastSample: model.lastSampleDate))
-                MetricGraph(values: model.history.networkOut.values,
-                            range: range,
-                            lineColor: theme.secondaryText,
-                            fillColor: .clear,
-                            gridColor: .clear,
-                            timeAxis: CompressedTimeAxis(history: model.history.networkOut, lastSample: model.lastSampleDate),
-                            showsBorder: false)
-            }
-            .frame(minHeight: 180)
-
-            HStack {
-                Text("scale: \(scaleLabel)")
-                Spacer()
+            HStack(spacing: 14) {
                 Label("Received", systemImage: "arrow.down").foregroundStyle(theme.color(for: .network))
                 Label("Sent", systemImage: "arrow.up").foregroundStyle(theme.secondaryText)
             }
-            .font(.caption2)
-            .foregroundStyle(theme.secondaryText)
-
+            .font(.caption)
+            FigureGrid(figures: [
+                Figure(label: "Received", value: SystemVitals.rate(model.vitals?.networkInBytesPerSec ?? 0)),
+                Figure(label: "Sent", value: SystemVitals.rate(model.vitals?.networkOutBytesPerSec ?? 0)),
+            ])
             if let interfaces = model.vitals?.networkInterfaces, !interfaces.isEmpty {
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
                     GridRow {
@@ -57,9 +49,7 @@ struct NetworkPanel: View {
                     }
                     .font(.caption)
                     .foregroundStyle(theme.secondaryText)
-
                     Divider().gridCellUnsizedAxes(.horizontal)
-
                     ForEach(interfaces, id: \.name) { row in
                         GridRow {
                             Text(row.name).foregroundStyle(theme.primaryText)
@@ -69,14 +59,8 @@ struct NetworkPanel: View {
                         .monospacedDigit()
                     }
                 }
-                .padding(.top, 8)
             }
-
-            Spacer()
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(theme.panelBackground)
     }
 
     private var scaleLabel: String {

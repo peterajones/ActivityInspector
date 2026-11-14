@@ -1,71 +1,39 @@
 import SwiftUI
 
-/// The Memory Performance panel: overall use, recent history, and the breakdown behind it.
+/// The Memory Performance page: use over the last five minutes, and the breakdown behind it.
 struct MemoryPanel: View {
     let model: VitalsModel
     @Environment(\.theme) private var theme
 
-    private let columns = Array(repeating: GridItem(.flexible(), alignment: .leading), count: 4)
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Memory").font(.title2).foregroundStyle(theme.primaryText)
-
-            HStack(spacing: 12) {
-                MeterBar(fraction: model.vitals?.memoryUsedFraction ?? 0,
-                         orientation: .horizontal,
-                         onColor: theme.color(for: .memory),
-                         offColor: theme.meterOff)
-                    .frame(height: 14)
-                Text(model.vitals?.memoryPercentText ?? "—")
-                    .font(.title3)
-                    .monospacedDigit()
-                    .foregroundStyle(theme.color(for: .memory))
+        PanelPage(.memory, model: model) {
+            GraphSection(label: "Memory used · last 5 min") {
+                MetricGraph(values: model.history.memoryUsedLong.values,
+                            capacity: VitalsHistory.longMemoryCapacity,
+                            range: graphRange,
+                            lineColor: theme.color(for: .memory),
+                            fillColor: theme.fillColor(for: .memory),
+                            gridColor: theme.gridLine,
+                            timeAxis: CompressedTimeAxis(samplesSeen: model.history.memoryUsedLong.totalAppended,
+                                                         gridInterval: 30,
+                                                         lastSample: model.lastSampleDate,
+                                                         sampleInterval: 1))
+                    .overlay(alignment: .topLeading) { rangeLabel(graphRange.upperBound) }
+                    .overlay(alignment: .bottomLeading) { rangeLabel(graphRange.lowerBound) }
             }
-
-            Text(model.vitals?.memoryText ?? "—")
-                .font(.subheadline)
-                .monospacedDigit()
-                .foregroundStyle(theme.secondaryText)
-
-            MetricGraph(values: model.history.memoryUsedLong.values,
-                        capacity: VitalsHistory.longMemoryCapacity,
-                        range: graphRange,
-                        lineColor: theme.color(for: .memory),
-                        fillColor: theme.fillColor(for: .memory),
-                        gridColor: theme.gridLine,
-                        timeAxis: CompressedTimeAxis(samplesSeen: model.history.memoryUsedLong.totalAppended,
-                                                     gridInterval: 30,
-                                                     lastSample: model.lastSampleDate,
-                                                     sampleInterval: 1))
-                .frame(minHeight: 120)
-                .overlay(alignment: .topLeading) { rangeLabel(graphRange.upperBound) }
-                .overlay(alignment: .bottomLeading) { rangeLabel(graphRange.lowerBound) }
-
-            HStack {
-                Text("5m ago")
-                Spacer()
-                Text("now")
-            }
-            .font(.caption2)
-            .foregroundStyle(theme.secondaryText)
-
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                readout("In use", model.vitals?.usedMemoryText)
-                readout("Available", model.vitals?.availableMemoryText)
-                readout("Cached", model.vitals?.cachedMemoryText)
-                readout("Pressure", model.vitals?.memoryPressureText)
-                readout("App memory", model.vitals?.appMemoryText)
-                readout("Wired", model.vitals?.wiredMemoryText)
-                readout("Compressed", model.vitals?.compressedMemoryText)
-                readout("Swap", model.vitals?.swapText)
-                readout("Page ins", model.vitals?.pageInsText)
-                readout("Page outs", model.vitals?.pageOutsText)
-            }
+            FigureGrid(figures: [
+                Figure(label: "In use", value: model.vitals?.usedMemoryText ?? "—"),
+                Figure(label: "Available", value: model.vitals?.availableMemoryText ?? "—"),
+                Figure(label: "Cached", value: model.vitals?.cachedMemoryText ?? "—"),
+                Figure(label: "Pressure", value: model.vitals?.memoryPressureText ?? "—"),
+                Figure(label: "App memory", value: model.vitals?.appMemoryText ?? "—"),
+                Figure(label: "Wired", value: model.vitals?.wiredMemoryText ?? "—"),
+                Figure(label: "Compressed", value: model.vitals?.compressedMemoryText ?? "—"),
+                Figure(label: "Swap", value: model.vitals?.swapText ?? "—"),
+                Figure(label: "Page ins", value: model.vitals?.pageInsText ?? "—"),
+                Figure(label: "Page outs", value: model.vitals?.pageOutsText ?? "—"),
+            ])
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(theme.panelBackground)
     }
 
     /// Zoomed to the recent window so ordinary movement is visible; a 1 GB minimum span
@@ -82,19 +50,5 @@ struct MemoryPanel: View {
             .monospacedDigit()
             .foregroundStyle(theme.color(for: .memory))
             .padding(6)
-    }
-
-    private func readout(_ title: String, _ value: String?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(theme.secondaryText)
-            Text(value ?? "—")
-                .font(.headline)
-                .monospacedDigit()
-                .foregroundStyle(theme.primaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
     }
 }
