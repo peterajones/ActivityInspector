@@ -18,6 +18,8 @@ struct ContentView: View {
     @AppStorage(Bloom.storageKey) private var bloomLevel = Bloom.defaultLevel
     @AppStorage(SaturationLevel.storageKey) private var saturationLevel = SaturationLevel.defaultLevel
     @State private var showsColours = false
+    /// Whether this window can be seen; its graphs stop animating while it can't.
+    @State private var windowVisible = true
 
     // Owned here, not in ProcessesView: that view lives in one branch of the detail
     // `switch` below, so it is destroyed and recreated on every surface change and
@@ -145,6 +147,8 @@ struct ContentView: View {
         .navigationTitle("macOSmonitor")
         .environment(\.theme, theme)
         .environment(\.bloom, Bloom(level: bloomLevel))
+        .environment(\.graphsAnimate, windowVisible)
+        .background(WindowVisibilityReader { windowVisible = $0 })
         // One customizable toolbar for the whole window (right-click → Customize Toolbar…),
         // declared here so it survives surface changes. Item IDs are what macOS stores the
         // user's arrangement under: don't rename them. The process buttons stay visible but

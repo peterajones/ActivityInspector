@@ -69,4 +69,40 @@ struct MetricGraphLifecycleTests {
         try await Task.sleep(for: .milliseconds(600))
         #expect(counter.count == 0)
     }
+
+    /// A window that can't be seen (minimised, covered, another Space) pauses its graphs:
+    /// measured 2026-11-14, a minimised window kept animating at ~36% of a core.
+    @Test func pausedGraphDrawsNoAnimationFrames() async throws {
+        let counter = FrameCounter()
+        let hosting = NSHostingView(rootView: makeGraph(counter: counter, animated: true)
+            .environment(\.graphsAnimate, false))
+        let window = makeWindow(hosting: hosting)
+        defer { window.close() }
+
+        try await Task.sleep(for: .milliseconds(600))
+        // The first render may draw once; an animation would draw ~18 times.
+        #expect(counter.count <= 1, "a paused graph drew \(counter.count) frames in 0.6 s")
+    }
+
+    /// The reader reports its window's visibility, and follows it on and off screen.
+    @Test func visibilityReaderFollowsItsWindow() async throws {
+        final class Box { var visible: Bool? }
+        let box = Box()
+        let hosting = NSHostingView(rootView: Color.clear
+            .frame(width: 200, height: 100)
+            .background(WindowVisibilityReader { box.visible = $0 }))
+        let window = makeWindow(hosting: hosting)
+        defer { window.close() }
+
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(box.visible == true)
+
+        window.orderOut(nil)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(box.visible == false)
+
+        window.orderFrontRegardless()
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(box.visible == true)
+    }
 }

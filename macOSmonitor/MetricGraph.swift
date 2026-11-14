@@ -38,6 +38,7 @@ struct MetricGraph: View {
 
     @Environment(\.graphFrameRate) private var frameRate
     @Environment(\.bloom) private var bloom
+    @Environment(\.graphsAnimate) private var animates
 
     private let gridDivisions = 4
 
@@ -49,7 +50,7 @@ struct MetricGraph: View {
 
     @ViewBuilder private var content: some View {
         if let timeAxis {
-            TimelineView(.animation(minimumInterval: 1.0 / frameRate)) { timeline in
+            TimelineView(.animation(minimumInterval: 1.0 / frameRate, paused: !animates)) { timeline in
                 let _ = onFrame?()
                 canvas(phase: GraphGeometry.scrollPhase(now: timeline.date,
                                                         lastSample: timeAxis.lastSample,
