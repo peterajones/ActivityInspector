@@ -85,7 +85,11 @@ actor SystemVitalsSampler: SystemVitalsSampling {
         var networkIn = 0.0
         var networkOut = 0.0
         var networkInterfaces: [InterfaceRate] = []
+        var networkTotalReceived: UInt64 = 0
+        var networkTotalSent: UInt64 = 0
         if let interfaces = network.interfaceCounters() {
+            networkTotalReceived = interfaces.reduce(0) { $0 &+ $1.received }
+            networkTotalSent = interfaces.reduce(0) { $0 &+ $1.sent }
             let time = now()
             // Rates per interface, each guarded on its own: one interface resetting (or one
             // just plugged in, with no baseline) reports 0 without zeroing its neighbours.
@@ -182,7 +186,9 @@ actor SystemVitalsSampler: SystemVitalsSampling {
             diskResponseMillis: diskResponse,
             diskTotalReadBytes: diskCounters?.read ?? 0,
             diskTotalWrittenBytes: diskCounters?.written ?? 0,
-            startupVolume: disk.startupVolume()
+            startupVolume: disk.startupVolume(),
+            networkTotalReceivedBytes: networkTotalReceived,
+            networkTotalSentBytes: networkTotalSent
         )
     }
 

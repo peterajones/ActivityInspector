@@ -17,6 +17,8 @@ struct VitalsHistory: Equatable, Sendable {
     var memoryUsedLong: MetricHistory
     /// GPU utilisation %; 0 for ticks where no GPU statistics were published.
     var gpu: MetricHistory
+    /// GPU memory in use, in bytes; a sample without a reading adds nothing.
+    var gpuMemory: MetricHistory
     /// One series per logical core, for the CPU panel's Logical Processors traces. Sized by
     /// the first sample that carries per-core data, and rebuilt if the core count changes.
     private(set) var perCore: [MetricHistory] = []
@@ -36,6 +38,7 @@ struct VitalsHistory: Equatable, Sendable {
         diskActive = MetricHistory(capacity: capacity)
         memoryUsedLong = MetricHistory(capacity: VitalsHistory.longMemoryCapacity)
         gpu = MetricHistory(capacity: capacity)
+        gpuMemory = MetricHistory(capacity: capacity)
     }
 
     /// Fans one snapshot into every series, keeping them index-aligned by construction.
@@ -50,6 +53,7 @@ struct VitalsHistory: Equatable, Sendable {
         diskWrite.append(vitals.diskWriteBytesPerSec)
         diskActive.append(vitals.diskActivePercent)
         gpu.append(vitals.gpu?.utilizationPercent ?? 0)
+        if let bytes = vitals.gpu?.memoryInUseBytes { gpuMemory.append(Double(bytes)) }
         appendPerCore(vitals.perCoreUsagePercent)
     }
 

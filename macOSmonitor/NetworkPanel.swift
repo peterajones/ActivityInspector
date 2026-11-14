@@ -34,10 +34,9 @@ struct NetworkPanel: View {
                 Label("Sent", systemImage: "arrow.up").foregroundStyle(theme.secondaryText)
             }
             .font(.caption)
-            FigureGrid(figures: [
-                Figure(label: "Received", value: SystemVitals.rate(model.vitals?.networkInBytesPerSec ?? 0)),
-                Figure(label: "Sent", value: SystemVitals.rate(model.vitals?.networkOutBytesPerSec ?? 0)),
-            ])
+            if let vitals = model.vitals {
+                FigureGrid(figures: Self.figures(vitals))
+            }
             if let interfaces = model.vitals?.networkInterfaces, !interfaces.isEmpty {
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
                     GridRow {
@@ -61,6 +60,14 @@ struct NetworkPanel: View {
                 }
             }
         }
+    }
+
+    /// Current rates, then totals since boot.
+    nonisolated static func figures(_ vitals: SystemVitals) -> [Figure] {
+        [Figure(label: "Received", value: SystemVitals.rate(vitals.networkInBytesPerSec)),
+         Figure(label: "Sent", value: SystemVitals.rate(vitals.networkOutBytesPerSec)),
+         Figure(label: "Received since boot", value: VolumeCapacity.decimal(vitals.networkTotalReceivedBytes)),
+         Figure(label: "Sent since boot", value: VolumeCapacity.decimal(vitals.networkTotalSentBytes))]
     }
 
     private var scaleLabel: String {

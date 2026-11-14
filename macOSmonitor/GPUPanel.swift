@@ -15,6 +15,20 @@ struct GPUPanel: View {
                             gridColor: theme.gridLine,
                             timeAxis: CompressedTimeAxis(history: model.history.gpu, lastSample: model.lastSampleDate))
             }
+            if !model.history.gpuMemory.isEmpty {
+                GraphSection(label: "GPU memory in use · last 60 s",
+                             note: model.vitals?.gpu?.memoryText, height: 120) {
+                    MetricGraph(values: model.history.gpuMemory.values,
+                                range: MetricScale.zoomed(model.history.gpuMemory.values,
+                                                          ceiling: Double(model.vitals?.totalMemoryBytes ?? 1),
+                                                          minimumSpan: 268_435_456),
+                                lineColor: theme.color(for: .gpu),
+                                fillColor: theme.fillColor(for: .gpu),
+                                gridColor: theme.gridLine,
+                                timeAxis: CompressedTimeAxis(history: model.history.gpuMemory,
+                                                             lastSample: model.lastSampleDate))
+                }
+            }
             FigureGrid(figures: [
                 Figure(label: "Utilisation", value: model.vitals?.gpuText ?? "—"),
                 Figure(label: "GPU", value: model.vitals?.gpu?.descriptionText ?? "—"),

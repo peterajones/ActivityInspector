@@ -38,6 +38,9 @@ struct SystemVitals: Equatable, Sendable {
     var diskTotalReadBytes: UInt64 = 0
     var diskTotalWrittenBytes: UInt64 = 0
     var startupVolume: VolumeCapacity? = nil
+    /// Bytes received and sent since boot, across every interface but loopback.
+    var networkTotalReceivedBytes: UInt64 = 0
+    var networkTotalSentBytes: UInt64 = 0
 
     var gpuText: String { gpu?.utilizationText ?? "—" }
 
