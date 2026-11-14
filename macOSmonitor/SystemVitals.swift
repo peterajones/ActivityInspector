@@ -18,6 +18,8 @@ struct SystemVitals: Equatable, Sendable {
     var networkInterfaces: [InterfaceRate] = []
     var battery: BatteryInfo? = nil
     var perCoreUsagePercent: [Double] = []
+    /// Each core's kernel share, 0–100, in the same order.
+    var perCoreSystemPercent: [Double] = []
     var diskReadBytesPerSec: Double = 0
     var diskWriteBytesPerSec: Double = 0
     var memoryReading: MemoryReading? = nil

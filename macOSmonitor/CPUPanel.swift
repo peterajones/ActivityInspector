@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The CPU Performance page: utilisation over the last minute, or — via right-click — a
+/// The CPU Performance page: Performance and Efficiency cores graphed side by side (or one
+/// overall graph without a known core layout), each with its kernel share; via right-click a
 /// per-core grid, mirroring Task Manager's "Logical processors" toggle; then the figures.
 struct CPUPanel: View {
     let model: VitalsModel
@@ -25,15 +26,24 @@ struct CPUPanel: View {
                              backgroundColor: theme.meterOff,
                              lastSample: model.lastSampleDate)
                 }
+            } else if let layout = model.coreLayout,
+                      let performance = model.coreClassHistory[.performance],
+                      let efficiency = model.coreClassHistory[.efficiency] {
+                // One graph per kind of core, side by side, each with its kernel share.
+                HStack(alignment: .top, spacing: 12) {
+                    GraphSection(label: "Performance cores · \(layout.count(.performance))") {
+                        loadGraph(load: performance.load, kernel: performance.kernel)
+                    }
+                    GraphSection(label: "Efficiency cores · \(layout.count(.efficiency))") {
+                        loadGraph(load: efficiency.load, kernel: efficiency.kernel)
+                    }
+                }
+                legend
             } else {
                 GraphSection(label: "Utilisation · last 60 s", note: "right-click for per core") {
-                    MetricGraph(values: model.history.cpu.values,
-                                range: MetricScale.fixed(100),
-                                lineColor: theme.color(for: .cpu),
-                                fillColor: theme.fillColor(for: .cpu),
-                                gridColor: theme.gridLine,
-                                timeAxis: CompressedTimeAxis(history: model.history.cpu, lastSample: model.lastSampleDate))
+                    loadGraph(load: model.history.cpu, kernel: model.history.cpuSystem)
                 }
+                legend
             }
             if let vitals = model.vitals {
                 FigureGrid(figures: Self.figures(vitals, layout: model.coreLayout))
@@ -44,6 +54,36 @@ struct CPUPanel: View {
                 showsCores.toggle()
             }
         }
+    }
+
+    /// Load with the kernel's share overlaid, on one 0–100% scale.
+    private func loadGraph(load: MetricHistory, kernel: MetricHistory) -> some View {
+        ZStack {
+            MetricGraph(values: load.values,
+                        range: MetricScale.fixed(100),
+                        lineColor: theme.color(for: .cpu),
+                        fillColor: theme.fillColor(for: .cpu),
+                        gridColor: theme.gridLine,
+                        timeAxis: CompressedTimeAxis(history: load, lastSample: model.lastSampleDate))
+            MetricGraph(values: kernel.values,
+                        range: MetricScale.fixed(100),
+                        lineColor: theme.secondaryText,
+                        fillColor: .clear,
+                        gridColor: .clear,
+                        timeAxis: CompressedTimeAxis(history: kernel, lastSample: model.lastSampleDate),
+                        showsBorder: false)
+        }
+    }
+
+    private var legend: some View {
+        HStack(spacing: 14) {
+            Label("Load", systemImage: "circle.fill").foregroundStyle(theme.color(for: .cpu))
+            Label("Kernel", systemImage: "circle.fill").foregroundStyle(theme.secondaryText)
+            Spacer()
+            Text("last 60 s · right-click for per core").foregroundStyle(theme.secondaryText)
+        }
+        .font(.caption)
+        .labelStyle(LegendLabelStyle())
     }
 
     /// The page's figures in reading order: core kinds only with a known layout, clocks only
@@ -76,5 +116,15 @@ struct CPUPanel: View {
         let cores = frequencies.filter { $0.key.hasPrefix(prefix) }.map(\.value)
         guard !cores.isEmpty else { return "—" }
         return CPUFrequencyMath.groupAverageMHz(cores).map { "~" + CoreFrequency.text(mhz: $0) } ?? "idle"
+    }
+}
+
+/// A small dot before a legend entry.
+private struct LegendLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon.font(.system(size: 6))
+            configuration.title
+        }
     }
 }

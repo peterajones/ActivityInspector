@@ -43,6 +43,7 @@ actor SystemVitalsSampler: SystemVitalsSampling {
         var cpuPercent = 0.0
         var cpuSystemPercent = 0.0
         var perCore: [Double] = []
+        var perCoreSystem: [Double] = []
         if let cores = host.cpuTicks() {
             // Require both counters to be monotonic per core before subtracting: 32-bit
             // tick counters can wrap on extreme uptime, and an unguarded UInt64 subtraction
@@ -55,15 +56,19 @@ actor SystemVitalsSampler: SystemVitalsSampling {
                 for (current, prior) in zip(cores, previous) {
                     guard current.total > prior.total, current.busy >= prior.busy else {
                         perCore.append(0)
+                        perCoreSystem.append(0)
                         continue
                     }
                     let deltaBusy = current.busy - prior.busy
                     let deltaTotal = current.total - prior.total
                     perCore.append(100.0 * Double(deltaBusy) / Double(deltaTotal))
+                    // A wrapped system counter counts as no kernel time rather than trapping.
+                    let deltaSystem = current.system >= prior.system ? current.system - prior.system : 0
+                    perCoreSystem.append(100.0 * Double(deltaSystem) / Double(deltaTotal))
                     totalBusy += deltaBusy
                     totalAll += deltaTotal
                     // A wrapped system counter counts as no kernel time rather than trapping.
-                    totalSystem += current.system >= prior.system ? current.system - prior.system : 0
+                    totalSystem += deltaSystem
                 }
                 if totalAll > 0 {
                     cpuPercent = 100.0 * Double(totalBusy) / Double(totalAll)
@@ -72,6 +77,7 @@ actor SystemVitalsSampler: SystemVitalsSampling {
             } else {
                 // First tick, or the core count changed: no baseline to subtract from.
                 perCore = Array(repeating: 0, count: cores.count)
+                perCoreSystem = perCore
             }
             previousCores = cores
         }
@@ -152,6 +158,7 @@ actor SystemVitalsSampler: SystemVitalsSampling {
             networkInterfaces: networkInterfaces,
             battery: batteryInfo,
             perCoreUsagePercent: perCore,
+            perCoreSystemPercent: perCoreSystem,
             diskReadBytesPerSec: diskRead,
             diskWriteBytesPerSec: diskWrite,
             memoryReading: memory,

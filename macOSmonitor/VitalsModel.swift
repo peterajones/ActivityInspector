@@ -17,6 +17,10 @@ final class VitalsModel {
     /// Which cores are performance and which efficiency; nil where the Mac doesn't say.
     let coreLayout: CoreLayout?
 
+    /// Each kind of core's average load and kernel share over the last minute, for the CPU
+    /// page's Performance and Efficiency graphs. Empty without a core layout.
+    private(set) var coreClassHistory: [CoreKind: CoreClassHistory] = [:]
+
     /// Latest grouped temperatures; nil until read, or when the sensors are unavailable.
     private(set) var thermal: ThermalReading?
     /// Hottest CPU die temperature, one sample per thermal tick: 150 × 2 s = 5 minutes.
@@ -56,6 +60,17 @@ final class VitalsModel {
         self.now = now
     }
 
+    /// A sample whose core count doesn't match the layout records nothing for that kind.
+    private func recordCoreClasses(_ sample: SystemVitals) {
+        guard let coreLayout else { return }
+        for kind in [CoreKind.performance, .efficiency] {
+            guard let load = coreLayout.averageLoad(of: kind, perCore: sample.perCoreUsagePercent),
+                  let kernel = coreLayout.averageLoad(of: kind, perCore: sample.perCoreSystemPercent)
+            else { continue }
+            coreClassHistory[kind, default: CoreClassHistory(capacity: history.cpu.capacity)].append(load: load, kernel: kernel)
+        }
+    }
+
     /// How fast the graphs glide: slower on battery or in Low Power Mode.
     var graphFrameRate: Double { GraphFrameRate.rate(for: vitals) }
 
@@ -64,6 +79,7 @@ final class VitalsModel {
         let sample = await sampler.sample()
         vitals = sample
         history.append(sample)
+        recordCoreClasses(sample)
         if let celsius = thermal?.headline { cpuTemperatureHistory.append(celsius) }
         lastSampleDate = now()
     }

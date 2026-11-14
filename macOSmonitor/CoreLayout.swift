@@ -7,6 +7,22 @@ enum CoreKind: String, Equatable, Sendable {
     case efficiency = "E"
 }
 
+/// One kind of core's average load and kernel share, sample by sample.
+struct CoreClassHistory: Equatable, Sendable {
+    private(set) var load: MetricHistory
+    private(set) var kernel: MetricHistory
+
+    init(capacity: Int) {
+        load = MetricHistory(capacity: capacity)
+        kernel = MetricHistory(capacity: capacity)
+    }
+
+    mutating func append(load: Double, kernel: Double) {
+        self.load.append(load)
+        self.kernel.append(kernel)
+    }
+}
+
 /// Which logical CPUs are performance and which are efficiency cores, indexed by logical CPU
 /// id (the order `host_processor_info` reports per-core load in). Read once: hardware
 /// doesn't change while the app runs.
