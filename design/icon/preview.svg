@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10201A"/><stop offset="1" stop-color="#040806"/></linearGradient>
+    <clipPath id="shape"><rect width="1024" height="1024" rx="230"/></clipPath>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g transform="translate(100 100) scale(0.8046875)"><g clip-path="url(#shape)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <g fill="#12331C"><rect x="192" y="437" width="180" height="66" rx="18"/>
+  <rect x="192" y="353" width="180" height="66" rx="18"/>
+  <rect x="192" y="269" width="180" height="66" rx="18"/>
+  <rect x="192" y="185" width="180" height="66" rx="18"/>
+  <rect x="422" y="185" width="180" height="66" rx="18"/>
+  <rect x="652" y="353" width="180" height="66" rx="18"/>
+  <rect x="652" y="269" width="180" height="66" rx="18"/>
+  <rect x="652" y="185" width="180" height="66" rx="18"/></g>
+    <g fill="#3DFF70" filter="url(#glow)"><rect x="192" y="773" width="180" height="66" rx="18"/>
+  <rect x="192" y="689" width="180" height="66" rx="18"/>
+  <rect x="192" y="605" width="180" height="66" rx="18"/>
+  <rect x="192" y="521" width="180" height="66" rx="18"/>
+  <rect x="422" y="773" width="180" height="66" rx="18"/>
+  <rect x="422" y="689" width="180" height="66" rx="18"/>
+  <rect x="422" y="605" width="180" height="66" rx="18"/>
+  <rect x="422" y="521" width="180" height="66" rx="18"/>
+  <rect x="422" y="437" width="180" height="66" rx="18"/>
+  <rect x="422" y="353" width="180" height="66" rx="18"/>
+  <rect x="422" y="269" width="180" height="66" rx="18"/>
+  <rect x="652" y="773" width="180" height="66" rx="18"/>
+  <rect x="652" y="689" width="180" height="66" rx="18"/>
+  <rect x="652" y="605" width="180" height="66" rx="18"/>
+  <rect x="652" y="521" width="180" height="66" rx="18"/>
+  <rect x="652" y="437" width="180" height="66" rx="18"/></g>
+  </g></g>
+</svg>
