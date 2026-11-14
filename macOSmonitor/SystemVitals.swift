@@ -30,6 +30,14 @@ struct SystemVitals: Equatable, Sendable {
     var coreFrequencies: [String: CoreFrequency] = [:]
     /// The kernel's share of all CPU time, 0–100 (part of `cpuUsagePercent`).
     var cpuSystemPercent: Double = 0
+    /// Share of the interval the disks spent on requests, 0–100.
+    var diskActivePercent: Double = 0
+    /// Average time per disk request over the interval; nil when there were none.
+    var diskResponseMillis: Double? = nil
+    /// Bytes read and written since boot.
+    var diskTotalReadBytes: UInt64 = 0
+    var diskTotalWrittenBytes: UInt64 = 0
+    var startupVolume: VolumeCapacity? = nil
 
     var gpuText: String { gpu?.utilizationText ?? "—" }
 

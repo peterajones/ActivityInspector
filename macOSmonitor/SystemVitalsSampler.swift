@@ -20,7 +20,7 @@ actor SystemVitalsSampler: SystemVitalsSampling {
     private var previousInterfaceNames: Set<String>?
     private var hardwarePorts: [String: HardwarePort] = [:]
     private var previousTime: UInt64?
-    private var previousDiskCounters: (read: UInt64, written: UInt64)?
+    private var previousDiskCounters: DiskCounters?
     private var previousDiskTime: UInt64?
 
     init(host: any HostStatsProviding = HostStats(),
@@ -120,7 +120,10 @@ actor SystemVitalsSampler: SystemVitalsSampling {
 
         var diskRead = 0.0
         var diskWrite = 0.0
-        if let counters = disk.counters() {
+        var diskActive = 0.0
+        var diskResponse: Double?
+        let diskCounters = disk.counters()
+        if let counters = diskCounters {
             let time = now()
             if let previous = previousDiskCounters, let previousT = previousDiskTime,
                time > previousT {
@@ -131,6 +134,14 @@ actor SystemVitalsSampler: SystemVitalsSampling {
                     }
                     if counters.written >= previous.written {
                         diskWrite = Double(counters.written - previous.written) / seconds
+                    }
+                    // A counter going backwards (a disk went away) counts as idle. Busy time can
+                    // exceed the interval (several disks, queued requests): cap at fully active.
+                    if counters.busyNanos >= previous.busyNanos, counters.operations >= previous.operations {
+                        let busy = Double(counters.busyNanos - previous.busyNanos)
+                        diskActive = min(100 * busy / Double(time - previousT), 100)
+                        let operations = counters.operations - previous.operations
+                        if operations > 0 { diskResponse = busy / Double(operations) / 1_000_000 }
                     }
                 }
             }
@@ -166,7 +177,12 @@ actor SystemVitalsSampler: SystemVitalsSampling {
             memoryPressure: host.memoryPressureLevel().flatMap(MemoryPressure.init(kernelLevel:)),
             gpu: gpu.read(),
             coreFrequencies: frequencies.read() ?? [:],
-            cpuSystemPercent: cpuSystemPercent
+            cpuSystemPercent: cpuSystemPercent,
+            diskActivePercent: diskActive,
+            diskResponseMillis: diskResponse,
+            diskTotalReadBytes: diskCounters?.read ?? 0,
+            diskTotalWrittenBytes: diskCounters?.written ?? 0,
+            startupVolume: disk.startupVolume()
         )
     }
 

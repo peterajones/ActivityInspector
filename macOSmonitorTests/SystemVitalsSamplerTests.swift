@@ -37,8 +37,10 @@ final class FakeBatteryStats: BatteryStatsProviding, @unchecked Sendable {
 }
 
 final class FakeDiskStats: DiskStatsProviding, @unchecked Sendable {
-    var next: (read: UInt64, written: UInt64)?
-    func counters() -> (read: UInt64, written: UInt64)? { next }
+    var next: DiskCounters?
+    var volume: VolumeCapacity?
+    func counters() -> DiskCounters? { next }
+    func startupVolume() -> VolumeCapacity? { volume }
 }
 
 struct SystemVitalsSamplerTests {
@@ -285,7 +287,7 @@ struct SystemVitalsSamplerTests {
 
     @Test func diskRatesAreBytesPerSecondOverElapsedTime() async {
         let disk = FakeDiskStats()
-        disk.next = (read: 1_000, written: 2_000)
+        disk.next = DiskCounters(read: 1_000, written: 2_000)
         let clock = FakeClock()
         let sampler = SystemVitalsSampler(host: FakeHostStats(),
                                           disk: disk,
@@ -295,7 +297,7 @@ struct SystemVitalsSamplerTests {
         #expect(first.diskReadBytesPerSec == 0)        // no baseline yet
 
         clock.now = 2_000_000_000                          // +2 seconds
-        disk.next = (read: 3_000, written: 2_500)      // +2000 read, +500 written
+        disk.next = DiskCounters(read: 3_000, written: 2_500)      // +2000 read, +500 written
         let second = await sampler.sample()
         #expect(second.diskReadBytesPerSec == 1_000)   // 2000 bytes / 2s
         #expect(second.diskWriteBytesPerSec == 250)
@@ -303,13 +305,13 @@ struct SystemVitalsSamplerTests {
 
     @Test func diskCounterGoingBackwardsYieldsZeroNotATrap() async {
         let disk = FakeDiskStats()
-        disk.next = (read: 5_000, written: 5_000)
+        disk.next = DiskCounters(read: 5_000, written: 5_000)
         let clock = FakeClock()
         let sampler = SystemVitalsSampler(host: FakeHostStats(), disk: disk, now: { clock.now })
         _ = await sampler.sample()
 
         clock.now = 1_000_000_000
-        disk.next = (read: 10, written: 10)            // counters reset
+        disk.next = DiskCounters(read: 10, written: 10)            // counters reset
         let sample = await sampler.sample()
         #expect(sample.diskReadBytesPerSec == 0)
         #expect(sample.diskWriteBytesPerSec == 0)

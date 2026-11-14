@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The Disk Performance page: read and write throughput sharing one autoscaled axis.
+/// The Disk Performance page: active time, read and write throughput on one autoscaled axis,
+/// response time, totals since boot and the startup disk's size.
 struct DiskPanel: View {
     let model: VitalsModel
     @Environment(\.theme) private var theme
@@ -11,7 +12,15 @@ struct DiskPanel: View {
 
     var body: some View {
         PanelPage(.disk, model: model) {
-            GraphSection(label: "Transfer rate · last 60 s", note: "scale \(scaleLabel)") {
+            GraphSection(label: "Active time · last 60 s", note: "0–100%", height: 140) {
+                MetricGraph(values: model.history.diskActive.values,
+                            range: MetricScale.fixed(100),
+                            lineColor: theme.color(for: .disk),
+                            fillColor: theme.fillColor(for: .disk),
+                            gridColor: theme.gridLine,
+                            timeAxis: CompressedTimeAxis(history: model.history.diskActive, lastSample: model.lastSampleDate))
+            }
+            GraphSection(label: "Transfer rate · last 60 s", note: "scale \(scaleLabel)", height: 140) {
                 ZStack {
                     MetricGraph(values: model.history.diskRead.values, range: range,
                                 lineColor: theme.color(for: .disk), fillColor: theme.fillColor(for: .disk),
@@ -29,11 +38,28 @@ struct DiskPanel: View {
                 Label("Write", systemImage: "arrow.up").foregroundStyle(theme.secondaryText)
             }
             .font(.caption)
-            FigureGrid(figures: [
-                Figure(label: "Read", value: SystemVitals.rate(model.vitals?.diskReadBytesPerSec ?? 0)),
-                Figure(label: "Write", value: SystemVitals.rate(model.vitals?.diskWriteBytesPerSec ?? 0)),
-            ])
+            if let vitals = model.vitals {
+                FigureGrid(figures: Self.figures(vitals))
+            }
         }
+    }
+
+    /// The page's figures: rates, active and response time, totals since boot, and the
+    /// startup volume's size where it can be read.
+    nonisolated static func figures(_ vitals: SystemVitals) -> [Figure] {
+        var figures = [
+            Figure(label: "Read", value: SystemVitals.rate(vitals.diskReadBytesPerSec)),
+            Figure(label: "Write", value: SystemVitals.rate(vitals.diskWriteBytesPerSec)),
+            Figure(label: "Active time", value: "\(Int(vitals.diskActivePercent.rounded()))%"),
+            Figure(label: "Response time", value: vitals.diskResponseMillis.map { String(format: "%.1f ms", $0) } ?? "—"),
+            Figure(label: "Read since boot", value: VolumeCapacity.decimal(vitals.diskTotalReadBytes)),
+            Figure(label: "Written since boot", value: VolumeCapacity.decimal(vitals.diskTotalWrittenBytes)),
+        ]
+        if let volume = vitals.startupVolume {
+            figures.append(Figure(label: "Startup disk", value: volume.totalText))
+            figures.append(Figure(label: "Available", value: volume.availableText))
+        }
+        return figures
     }
 
     private var scaleLabel: String {

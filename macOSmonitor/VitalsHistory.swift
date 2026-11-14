@@ -12,6 +12,8 @@ struct VitalsHistory: Equatable, Sendable {
     var networkOut: MetricHistory
     var diskRead: MetricHistory
     var diskWrite: MetricHistory
+    /// The disks' active time, 0–100.
+    var diskActive: MetricHistory
     var memoryUsedLong: MetricHistory
     /// GPU utilisation %; 0 for ticks where no GPU statistics were published.
     var gpu: MetricHistory
@@ -31,6 +33,7 @@ struct VitalsHistory: Equatable, Sendable {
         networkOut = MetricHistory(capacity: capacity)
         diskRead = MetricHistory(capacity: capacity)
         diskWrite = MetricHistory(capacity: capacity)
+        diskActive = MetricHistory(capacity: capacity)
         memoryUsedLong = MetricHistory(capacity: VitalsHistory.longMemoryCapacity)
         gpu = MetricHistory(capacity: capacity)
     }
@@ -45,6 +48,7 @@ struct VitalsHistory: Equatable, Sendable {
         networkOut.append(vitals.networkOutBytesPerSec)
         diskRead.append(vitals.diskReadBytesPerSec)
         diskWrite.append(vitals.diskWriteBytesPerSec)
+        diskActive.append(vitals.diskActivePercent)
         gpu.append(vitals.gpu?.utilizationPercent ?? 0)
         appendPerCore(vitals.perCoreUsagePercent)
     }
