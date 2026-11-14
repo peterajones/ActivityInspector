@@ -14,6 +14,8 @@ struct ContentView: View {
     /// last sample is on screen at once when you come back.
     @State private var portsModel = PortsModel(sampler: PortsSampler(privileged: PrivilegedHelperClient.shared))
     @State private var surface: Surface? = .summary
+    /// The metric page Performance reopens: the last one viewed, CPU at first.
+    @State private var lastMetric: Surface = .cpu
     @AppStorage("themeID") private var themeID: String = Theme.system.id
     @AppStorage(Bloom.storageKey) private var bloomLevel = Bloom.defaultLevel
     @AppStorage(SaturationLevel.storageKey) private var saturationLevel = SaturationLevel.defaultLevel
@@ -70,27 +72,9 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $surface) {
-                Label(Surface.summary.title, systemImage: "square.grid.2x2")
-                    .tag(Surface.summary)
-                Label(Surface.processes.title, systemImage: "list.bullet")
-                    .tag(Surface.processes)
-                Label(Surface.ports.title, systemImage: "network")
-                    .tag(Surface.ports)
-                Section("Performance") {
-                    ForEach(Surface.performance(hasGPU: vitalsModel.vitals?.gpu != nil,
-                                                hasThermal: vitalsModel.thermal != nil,
-                                                hasEnergy: vitalsModel.power != nil,
-                                                hasBattery: vitalsModel.vitals?.battery != nil)) { item in
-                        if let metric = item.metric {
-                            SidebarMeter(title: item.title,
-                                         value: meterValue(item),
-                                         fraction: meterFraction(item),
-                                         metric: metric)
-                                .saturation(SaturationLevel.amount(saturationLevel))
-                                .tag(item)
-                        }
-                    }
+            List(selection: sidebarSelection) {
+                ForEach(SidebarItem.allCases) { item in
+                    Label(item.title, systemImage: item.systemImage).tag(item)
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { sidebarFooter }
@@ -118,22 +102,12 @@ struct ContentView: View {
                               searchText: $portsSearchText,
                               filter: $portsFilter,
                               sortOrder: $portsSortOrder)
-                case .cpu:
-                    CPUPanel(model: vitalsModel)
-                case .gpu:
-                    GPUPanel(model: vitalsModel)
-                case .memory:
-                    MemoryPanel(model: vitalsModel)
-                case .network:
-                    NetworkPanel(model: vitalsModel)
-                case .disk:
-                    DiskPanel(model: vitalsModel)
-                case .thermal:
-                    ThermalPanel(model: vitalsModel)
-                case .energy:
-                    EnergyPanel(model: vitalsModel, processes: model)
-                case .battery:
-                    BatteryPanel(model: batteryModel)
+                // One branch for every metric page, so the Performance column keeps its
+                // identity (and scroll position) while the page beside it changes.
+                case .cpu, .gpu, .memory, .network, .disk, .thermal, .energy, .battery:
+                    PerformanceView(selection: $surface, items: performanceItems, vitalsModel: vitalsModel) {
+                        performancePage
+                    }
                 }
             }
             .saturation(SaturationLevel.amount(saturationLevel))
@@ -143,7 +117,11 @@ struct ContentView: View {
                 StatusBarView(processCount: model.rows.count, uptime: vitalsModel.vitals?.uptimeText)
             }
         }
-        .frame(minWidth: 900, minHeight: 500)
+        // 1,000 wide: sidebar, the Performance column and a page with room for two graphs.
+        .frame(minWidth: 1000, minHeight: 500)
+        .onChange(of: surface) { _, page in
+            if let page, page.sidebarItem == .performance { lastMetric = page }
+        }
         .navigationTitle("macOSmonitor")
         .environment(\.theme, theme)
         .environment(\.bloom, Bloom(level: bloomLevel))
@@ -205,52 +183,34 @@ struct ContentView: View {
         return PendingTermination.request(for: selectionBatch, signal: signal)
     }
 
-    private func meterValue(_ surface: Surface) -> String {
-        guard let vitals = vitalsModel.vitals else { return "—" }
-        switch surface {
-        case .cpu:     return vitals.cpuText
-        case .gpu:     return vitals.gpuText
-        case .memory:  return vitals.memoryText
-        case .network: return vitals.networkText
-        case .disk:    return vitals.diskText
-        case .thermal: return ThermalReading.text(vitalsModel.thermal?.headline)
-        case .energy:  return PowerReading.text(vitalsModel.power?.systemWatts)
-        case .battery: return vitals.battery?.displayText ?? "—"
-        case .summary, .processes, .ports: return ""
-        }
+    /// The metric pages this Mac has, in Performance-column order.
+    private var performanceItems: [Surface] {
+        Surface.performance(hasGPU: vitalsModel.vitals?.gpu != nil,
+                            hasThermal: vitalsModel.thermal != nil,
+                            hasEnergy: vitalsModel.power != nil,
+                            hasBattery: vitalsModel.vitals?.battery != nil)
     }
 
-    private func meterFraction(_ surface: Surface) -> Double {
-        guard let vitals = vitalsModel.vitals else { return 0 }
-        switch surface {
-        case .cpu:
-            return vitals.cpuUsagePercent / 100
-        case .gpu:
-            return (vitals.gpu?.utilizationPercent ?? 0) / 100
-        case .memory:
-            return vitals.totalMemoryBytes > 0
-                ? Double(vitals.usedMemoryBytes) / Double(vitals.totalMemoryBytes)
-                : 0
-        case .network:
-            let range = MetricScale.autoscaled([vitalsModel.history.networkIn,
-                                                vitalsModel.history.networkOut])
-            return range.upperBound > 0
-                ? vitals.networkInBytesPerSec / range.upperBound
-                : 0
-        case .disk:
-            let range = MetricScale.autoscaled([vitalsModel.history.diskRead,
-                                                vitalsModel.history.diskWrite])
-            return range.upperBound > 0
-                ? (vitals.diskReadBytesPerSec + vitals.diskWriteBytesPerSec) / range.upperBound
-                : 0
-        case .thermal:
-            return ThermalPanel.meterFraction(vitalsModel.thermal?.headline)
-        case .energy:
-            return EnergyPanel.meterFraction(vitalsModel.power?.systemWatts, history: vitalsModel.powerHistory)
-        case .battery:
-            return Double(vitals.battery?.chargePercent ?? 0) / 100
-        case .summary, .processes, .ports:
-            return 0
+    /// The sidebar's selection: Performance for any metric page, and choosing it reopens the
+    /// metric last viewed.
+    private var sidebarSelection: Binding<SidebarItem?> {
+        Binding(get: { (surface ?? .summary).sidebarItem },
+                set: { item in
+                    guard let item else { return }
+                    surface = item.surface(lastMetric: lastMetric, available: performanceItems)
+                })
+    }
+
+    @ViewBuilder private var performancePage: some View {
+        switch surface ?? .summary {
+        case .gpu: GPUPanel(model: vitalsModel)
+        case .memory: MemoryPanel(model: vitalsModel)
+        case .network: NetworkPanel(model: vitalsModel)
+        case .disk: DiskPanel(model: vitalsModel)
+        case .thermal: ThermalPanel(model: vitalsModel)
+        case .energy: EnergyPanel(model: vitalsModel, processes: model)
+        case .battery: BatteryPanel(model: batteryModel)
+        default: CPUPanel(model: vitalsModel)
         }
     }
 }

@@ -1,9 +1,16 @@
 # macOSmonitor
 
 A macOS Activity-Monitor-style app: a Summary dashboard (the default surface), a live process
-table with an inspector, a Ports table, and a Performance view (sidebar meters + CPU, GPU,
-Memory, Network, Disk, Thermal, Energy and Battery panels). A menu-bar item, and an optional
-root helper for other users' processes. Five themes; meters are segmented LED bars.
+table with an inspector, a Ports table, and a Performance section. A menu-bar item, and an
+optional root helper for other users' processes. Five themes; meters are segmented LED bars.
+
+**Navigation (2026-11-14):** the sidebar lists `SidebarItem`s (Summary, Performance, Processes,
+Ports). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
+Disk, Thermal, Energy, Battery, each where this Mac reports it) beside the chosen metric's
+panel. `surface` (a `Surface`) is still the one source of truth for which page shows; every
+metric surface maps to the Performance sidebar item, and choosing Performance reopens the last
+metric viewed. Summary's cards set `surface` to a metric, landing in Performance. The column's
+small graphs are still (paused, no glide); only the panel's graphs glide.
 Swift 6, SwiftUI, no third-party dependencies.
 
 ## Design status: functionality first, a design round later
@@ -142,7 +149,7 @@ A toolbar declared on `ProcessesView` is rebuilt on every surface change, which 
 "Customize Toolbar…" entirely and forgets the user's arrangement. Process buttons stay in the
 window toolbar and are disabled off the Processes surface; don't move them back down.
 
-**`MeterBar` is the one meter component** (Summary strip, `StatCard`, sidebar). It draws 20
+**`MeterBar` is the one meter component** (Summary column and tiles, panels, menu-bar panel). It draws 20
 fixed segments of 5% each, lit by rounding *up* so any non-zero reading shows. Layout maths is
 pure and static (`litSegments`, `segmentRects`), like `GraphGeometry` — change the look there,
 not at call sites. Colour comes from `Theme.color(for:)`; the VFD themes stay monochrome, so no
