@@ -117,6 +117,16 @@ struct LaunchPublisherTests {
         defer { try? FileManager.default.removeItem(at: unsigned) }
         #expect(CodePublisher.publisher(ofProgramAt: unsigned.path) == "Unsigned")
     }
+
+    /// Privileged helpers are often execute-only (rwx--x--x): the signature can't be read, which
+    /// isn't the same as having none.
+    @Test func aProgramWeCantReadIsNotCalledUnsigned() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("execonly-\(UUID().uuidString)")
+        try Data("#!/bin/sh\n".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        try FileManager.default.setAttributes([.posixPermissions: 0o111], ofItemAtPath: file.path)
+        #expect(CodePublisher.publisher(ofProgramAt: file.path) == "Can’t be checked")
+    }
 }
 
 struct FileFactsTests {

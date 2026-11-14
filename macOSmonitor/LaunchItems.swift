@@ -160,9 +160,11 @@ enum CodePublisher {
         return name
     }
 
-    /// "Apple", a developer's name, "Unsigned", or "Program missing".
+    /// "Apple", a developer's name, "Unsigned", "Can’t be checked" (not readable), or "Program missing".
     nonisolated static func publisher(ofProgramAt path: String) -> String {
         guard FileManager.default.fileExists(atPath: path) else { return "Program missing" }
+        // Privileged helpers are often execute-only: unreadable isn't the same as unsigned.
+        guard FileManager.default.isReadableFile(atPath: path) else { return "Can’t be checked" }
         var code: SecStaticCode?
         guard SecStaticCodeCreateWithPath(URL(fileURLWithPath: path) as CFURL, [], &code) == errSecSuccess,
               let code else { return "Unsigned" }
