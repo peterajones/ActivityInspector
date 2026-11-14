@@ -30,15 +30,17 @@ leftovers. Startup Apps' checkbox runs `launchctl disable` then `bootout` (or `e
 `Launchctl.run` waits on the process's termination handler, never `waitUntilExit()`.
 Swift 6, SwiftUI, no third-party dependencies.
 
-## Design status: functionality first, a design round later
+## Design status: design round done (2026-11-14)
 
-So far the work has been about **what the Mac can report**, not how it looks. Peter doesn't yet
-consider the UI up to the standard he wants. A round of design tweaks is planned once the app
-works well; its scope is **to be discussed with Peter** (TODO.md). Until then:
-- Keep new UI consistent with the existing patterns (panel layout, `MeterBar`, themes) rather
-  than restyling as you go.
-- Don't start visual redesigns he hasn't asked for. Note ideas for the design round in TODO.md
-  instead.
+The first round of design work has landed: Summary cards and tiles, the Performance section (metric
+column + one page frame), the status bar, Colours popover and Settings window, System Info, Startup
+Apps and Services. New UI should follow these patterns rather than invent new ones:
+- Summary: `DashboardCard` (`.dashboardCard(tint)`), `SummaryTileCard`.
+- Metric pages: `PanelPage` (title, subtitle, wide glowing meter), `GraphSection`, `FigureGrid`
+  (tiles when a `Figure` has an icon).
+- Colour comes from `theme.color(for: metric)`, never the theme's accent; VFD themes stay monochrome.
+- Meters are `MeterBar` (tinted unlit segments, `glows:` on the Summary and panels); graphs are
+  `MetricGraph` with a `CompressedTimeAxis`, still (`graphsAnimate` false) when small.
 
 ## Build and test
 
