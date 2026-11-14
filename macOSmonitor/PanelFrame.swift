@@ -4,6 +4,8 @@ import SwiftUI
 struct Figure: Equatable, Identifiable, Sendable {
     let label: String
     let value: String
+    /// An SF Symbol; figures with one are drawn as tiles.
+    var systemImage: String? = nil
     var id: String { label }
 }
 
@@ -111,17 +113,46 @@ struct GraphSection<Graph: View>: View {
     }
 }
 
-/// Figures as a grid: a small grey label over a bold value, as many columns as fit.
+/// Figures as a grid: a small grey label over a bold value, as many columns as fit. Figures
+/// with an icon are drawn as tiles, the icon in `tint`.
 struct FigureGrid: View {
     let figures: [Figure]
+    var tint: Color? = nil
 
     @Environment(\.theme) private var theme
 
-    private let columns = [GridItem(.adaptive(minimum: 140), alignment: .topLeading)]
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: figures.contains { $0.systemImage != nil } ? 180 : 140),
+                  alignment: .topLeading)]
+    }
 
     var body: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
             ForEach(figures) { figure in
+                if let icon = figure.systemImage {
+                    tile(figure, icon: icon)
+                } else {
+                    plain(figure)
+                }
+            }
+        }
+    }
+
+    private func tile(_ figure: Figure, icon: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint ?? theme.primaryText)
+                .frame(width: 26)
+            plain(figure)
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(theme.secondaryText.opacity(0.08)))
+    }
+
+    private func plain(_ figure: Figure) -> some View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(figure.label)
                         .font(.caption)
@@ -133,8 +164,6 @@ struct FigureGrid: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
-            }
-        }
     }
 }
 

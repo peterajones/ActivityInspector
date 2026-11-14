@@ -28,6 +28,8 @@ final class VitalsModel {
     /// The latest CPU temperature on every vitals tick (60 s), so it can share the CPU graph's
     /// time axis; the sensors are read every 2 s, so each reading repeats until the next.
     private(set) var cpuTemperatureHistory = MetricHistory(capacity: 60)
+    /// Each readable sensor group's temperature, one sample per thermal tick (5 minutes).
+    private(set) var thermalGroupHistory: [ThermalGroup: MetricHistory] = [:]
     /// When the latest temperature joined the history, so the thermal graph glides on its
     /// own 2 s tick.
     private(set) var lastThermalSampleDate: Date?
@@ -91,6 +93,12 @@ final class VitalsModel {
         if let headline = thermal?.headline {
             thermalHistory.append(headline)
             lastThermalSampleDate = now()
+        }
+        if let thermal {
+            for group in ThermalGroup.allCases {
+                guard let celsius = group.celsius(in: thermal) else { continue }
+                thermalGroupHistory[group, default: MetricHistory(capacity: Self.thermalHistoryCapacity)].append(celsius)
+            }
         }
     }
 

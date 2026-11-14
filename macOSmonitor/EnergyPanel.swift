@@ -31,6 +31,23 @@ struct EnergyPanel: View {
         return facts
     }
 
+    /// The page's tiles: the power figures (as `facts`), then where the power comes from, Low
+    /// Power Mode and, on a laptop, the battery's charge.
+    nonisolated static func tiles(power: PowerReading?, vitals: SystemVitals?) -> [Figure] {
+        let icons = ["System total": "bolt.fill", "From power adapter": "powerplug",
+                     "Battery, in or out": "battery.50percent", "GPU": "display"]
+        var tiles = facts(power).map { Figure(label: $0.label, value: $0.value, systemImage: icons[$0.label] ?? "bolt") }
+        guard let vitals else { return tiles }
+        let onBattery = vitals.battery?.state == .discharging
+        tiles.append(Figure(label: "Power source", value: onBattery ? "Battery" : "Power adapter",
+                            systemImage: onBattery ? "battery.75percent" : "powerplug.fill"))
+        tiles.append(Figure(label: "Low Power Mode", value: vitals.lowPowerMode ? "On" : "Off", systemImage: "leaf"))
+        if let battery = vitals.battery {
+            tiles.append(Figure(label: "Battery", value: "\(battery.chargePercent)%", systemImage: "battery.100percent"))
+        }
+        return tiles
+    }
+
     nonisolated static func meterFraction(_ watts: Double?, history: MetricHistory) -> Double {
         min(max((watts ?? 0) / range(history).upperBound, 0), 1)
     }
@@ -47,7 +64,8 @@ struct EnergyPanel: View {
                             gridColor: theme.gridLine,
                             timeAxis: CompressedTimeAxis(history: model.powerHistory, lastSample: model.lastSampleDate))
             }
-            FigureGrid(figures: Self.facts(model.power))
+            FigureGrid(figures: Self.tiles(power: model.power, vitals: model.vitals),
+                       tint: theme.color(for: .energy))
 
             Text("Top processes by power")
                 .font(.headline)

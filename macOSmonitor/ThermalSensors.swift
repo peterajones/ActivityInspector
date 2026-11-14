@@ -61,6 +61,29 @@ struct ThermalReading: Equatable, Sendable {
     var headline: Double? { cpuDieMax ?? [boardMax, ssd, battery].compactMap { $0 }.max() }
 }
 
+/// The sensor groups the Thermal page shows a card for (the hottest CPU die has the main graph).
+enum ThermalGroup: CaseIterable, Hashable, Sendable {
+    case cpuDieAverage, board, ssd, battery
+
+    var title: String {
+        switch self {
+        case .cpuDieAverage: "CPU die, average"
+        case .board: "Board, hottest"
+        case .ssd: "SSD"
+        case .battery: "Battery"
+        }
+    }
+
+    nonisolated func celsius(in reading: ThermalReading) -> Double? {
+        switch self {
+        case .cpuDieAverage: reading.cpuDieAverage
+        case .board: reading.boardMax
+        case .ssd: reading.ssd
+        case .battery: reading.battery
+        }
+    }
+}
+
 /// Reads every temperature sensor; behind a protocol so the sampler can be tested with a fake.
 protocol ThermalSensorProviding: Sendable {
     /// Nil when the private interface is unavailable (a macOS update removed or changed it).
