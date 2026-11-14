@@ -18,8 +18,8 @@ struct GPUPanel: View {
 
             MetricGraph(values: model.history.gpu.values,
                         range: MetricScale.fixed(100),
-                        lineColor: theme.graphLine,
-                        fillColor: theme.graphFill,
+                        lineColor: theme.color(for: .gpu),
+                        fillColor: theme.fillColor(for: .gpu),
                         gridColor: theme.gridLine,
                         timeAxis: CompressedTimeAxis(history: model.history.gpu, lastSample: model.lastSampleDate))
                 .frame(minHeight: 180)

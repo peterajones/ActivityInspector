@@ -23,14 +23,14 @@ struct NetworkPanel: View {
             ZStack {
                 MetricGraph(values: model.history.networkIn.values,
                             range: range,
-                            lineColor: theme.graphLine,
-                            fillColor: theme.graphFill,
+                            lineColor: theme.color(for: .network),
+                            fillColor: theme.fillColor(for: .network),
                             gridColor: theme.gridLine,
                             timeAxis: CompressedTimeAxis(history: model.history.networkIn, lastSample: model.lastSampleDate))
                 MetricGraph(values: model.history.networkOut.values,
                             range: range,
                             lineColor: theme.secondaryText,
-                            fillColor: theme.graphFill,
+                            fillColor: .clear,
                             gridColor: .clear,
                             timeAxis: CompressedTimeAxis(history: model.history.networkOut, lastSample: model.lastSampleDate),
                             showsBorder: false)
@@ -40,7 +40,7 @@ struct NetworkPanel: View {
             HStack {
                 Text("scale: \(scaleLabel)")
                 Spacer()
-                Label("Received", systemImage: "arrow.down").foregroundStyle(theme.graphLine)
+                Label("Received", systemImage: "arrow.down").foregroundStyle(theme.color(for: .network))
                 Label("Sent", systemImage: "arrow.up").foregroundStyle(theme.secondaryText)
             }
             .font(.caption2)
@@ -63,7 +63,7 @@ struct NetworkPanel: View {
                     ForEach(interfaces, id: \.name) { row in
                         GridRow {
                             Text(row.name).foregroundStyle(theme.primaryText)
-                            Text(row.inText).foregroundStyle(theme.graphLine)
+                            Text(row.inText).foregroundStyle(theme.color(for: .network))
                             Text(row.outText).foregroundStyle(theme.secondaryText)
                         }
                         .monospacedDigit()

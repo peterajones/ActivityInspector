@@ -22,11 +22,11 @@ struct DiskPanel: View {
 
             ZStack {
                 MetricGraph(values: model.history.diskRead.values, range: range,
-                            lineColor: theme.graphLine, fillColor: theme.graphFill,
+                            lineColor: theme.color(for: .disk), fillColor: theme.fillColor(for: .disk),
                             gridColor: theme.gridLine,
                             timeAxis: CompressedTimeAxis(history: model.history.diskRead, lastSample: model.lastSampleDate))
                 MetricGraph(values: model.history.diskWrite.values, range: range,
-                            lineColor: theme.secondaryText, fillColor: theme.graphFill,
+                            lineColor: theme.secondaryText, fillColor: .clear,
                             gridColor: .clear,
                             timeAxis: CompressedTimeAxis(history: model.history.diskWrite, lastSample: model.lastSampleDate),
                             showsBorder: false)

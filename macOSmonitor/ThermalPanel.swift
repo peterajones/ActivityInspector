@@ -28,8 +28,8 @@ struct ThermalPanel: View {
             MetricGraph(values: model.thermalHistory.values,
                         capacity: model.thermalHistory.capacity,
                         range: MetricScale.fixed(Self.scaleMax),
-                        lineColor: theme.graphLine,
-                        fillColor: theme.graphFill,
+                        lineColor: theme.color(for: .thermal),
+                        fillColor: theme.fillColor(for: .thermal),
                         gridColor: theme.gridLine,
                         timeAxis: CompressedTimeAxis(history: model.thermalHistory, lastSample: model.lastThermalSampleDate, sampleInterval: 2, gridInterval: 15))
                 .frame(minHeight: 180)

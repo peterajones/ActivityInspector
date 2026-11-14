@@ -47,7 +47,7 @@ struct BatteryPanel: View {
             }
 
             BatteryHistoryGraph(segments: model.history.segments, now: Date(),
-                                lineColor: theme.graphLine, fillColor: theme.graphFill,
+                                lineColor: theme.color(for: .battery), fillColor: theme.fillColor(for: .battery),
                                 gridColor: theme.gridLine)
                 .frame(minHeight: 180)
 
@@ -58,7 +58,7 @@ struct BatteryPanel: View {
                 // shown when there is a bar for it to explain.
                 if model.history.hasOnPowerTime {
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 1).fill(theme.graphLine).frame(width: 12, height: 4)
+                        RoundedRectangle(cornerRadius: 1).fill(theme.color(for: .battery)).frame(width: 12, height: 4)
                         Text("Bar below graph = on power")
                     }
                 }

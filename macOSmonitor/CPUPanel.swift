@@ -25,8 +25,8 @@ struct CPUPanel: View {
                             .map { label in
                                 model.vitals?.coreFrequencies[label].map { "\(label) · \($0.text)" } ?? label
                             },
-                         lineColor: theme.graphLine,
-                         fillColor: theme.graphFill,
+                         lineColor: theme.color(for: .cpu),
+                         fillColor: theme.fillColor(for: .cpu),
                          backgroundColor: theme.meterOff,
                          lastSample: model.lastSampleDate)
                 Text("Last 60s per core")
@@ -35,8 +35,8 @@ struct CPUPanel: View {
             } else {
                 MetricGraph(values: model.history.cpu.values,
                             range: MetricScale.fixed(100),
-                            lineColor: theme.graphLine,
-                            fillColor: theme.graphFill,
+                            lineColor: theme.color(for: .cpu),
+                            fillColor: theme.fillColor(for: .cpu),
                             gridColor: theme.gridLine,
                             timeAxis: CompressedTimeAxis(history: model.history.cpu, lastSample: model.lastSampleDate))
                     .frame(minHeight: 180)

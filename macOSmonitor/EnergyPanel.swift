@@ -53,8 +53,8 @@ struct EnergyPanel: View {
             MetricGraph(values: model.powerHistory.values,
                         capacity: model.powerHistory.capacity,
                         range: Self.range(model.powerHistory),
-                        lineColor: theme.graphLine,
-                        fillColor: theme.graphFill,
+                        lineColor: theme.color(for: .energy),
+                        fillColor: theme.fillColor(for: .energy),
                         gridColor: theme.gridLine,
                         timeAxis: CompressedTimeAxis(history: model.powerHistory, lastSample: model.lastSampleDate))
                 .frame(minHeight: 180)
