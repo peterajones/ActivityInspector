@@ -3,7 +3,6 @@
 _Single source of truth for unfinished work in this project. Tick an item when it is done; the review harness records it and removes the line._
 
 ## Next
-- [x] Design round: discuss with Peter, then do a pass of design tweaks over the UI once the functionality has settled (he doesn't yet consider the UI up to standard; scope to be agreed) (from: Peter, 2026-11-13)
 - [ ] App icon: sketch concepts with Peter (a simple, bold shape that still reads in one colour), then build the layered icon in Icon Composer so macOS can render its default, dark, clear and tinted styles; needed for the App Store submission (from: Peter, 2026-11-14)
 - [ ] App Store edition: list processes with sysctl(KERN_PROC_ALL), since proc_listpids returns nothing in the App Sandbox (from: sandbox probe, 2026-11-13)
 
@@ -17,4 +16,3 @@ _Single source of truth for unfinished work in this project. Tick an item when i
 - [ ] Decide whether to add a Users page: accounts and who is logged in (from: candidates list, 2026-11-14)
 - [ ] Decide whether to add a Disk Space page: what is using the disk, by folder; scanning is slow, so it needs care (from: candidates list, 2026-11-14)
 - [ ] Decide whether to add a System Info export: copy or save a report of one item or all of them (deferred when System Info was built) (from: candidates list, 2026-11-14)
-- [x] Decide which items from Peter's own UI-fix list to take on (from: Peter, 2026-11-14)
