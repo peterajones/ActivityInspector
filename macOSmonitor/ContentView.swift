@@ -22,6 +22,8 @@ struct ContentView: View {
     @State private var showsColours = false
     /// What System Info has read, kept here so returning to the page doesn't read it all again.
     @State private var systemInfoModel = SystemInfoModel()
+    @State private var startupModel = LaunchItemsModel(kind: .startup)
+    @State private var servicesModel = LaunchItemsModel(kind: .services)
     /// Whether this window can be seen; its graphs stop animating while it can't.
     @State private var windowVisible = true
 
@@ -106,6 +108,10 @@ struct ContentView: View {
                               sortOrder: $portsSortOrder)
                 case .systemInfo:
                     SystemInfoView(model: systemInfoModel)
+                case .startupApps:
+                    LaunchItemsView(model: startupModel)
+                case .services:
+                    LaunchItemsView(model: servicesModel)
                 // One branch for every metric page, so the Performance column keeps its
                 // identity (and scroll position) while the page beside it changes.
                 case .cpu, .gpu, .memory, .network, .disk, .thermal, .energy, .battery:

@@ -14,11 +14,14 @@ struct PerformanceNavigationTests {
         #expect(Surface.processes.sidebarItem == .processes)
         #expect(Surface.ports.sidebarItem == .ports)
         #expect(Surface.systemInfo.sidebarItem == .systemInfo)
+        #expect(Surface.startupApps.sidebarItem == .startupApps)
+        #expect(Surface.services.sidebarItem == .services)
     }
 
     @Test func sidebarListsFourItemsInOrder() {
-        #expect(SidebarItem.allCases == [.summary, .performance, .processes, .ports, .systemInfo])
-        #expect(SidebarItem.allCases.map(\.title) == ["Summary", "Performance", "Processes", "Ports", "System Info"])
+        #expect(SidebarItem.allCases == [.summary, .performance, .processes, .ports, .systemInfo, .startupApps, .services])
+        #expect(SidebarItem.allCases.map(\.title) == ["Summary", "Performance", "Processes", "Ports", "System Info",
+                                                      "Startup Apps", "Services"])
     }
 
     @Test func performanceReopensTheLastMetricViewed() {
@@ -35,6 +38,8 @@ struct PerformanceNavigationTests {
         #expect(SidebarItem.processes.surface(lastMetric: .network, available: available) == .processes)
         #expect(SidebarItem.ports.surface(lastMetric: .network, available: available) == .ports)
         #expect(SidebarItem.systemInfo.surface(lastMetric: .network, available: available) == .systemInfo)
+        #expect(SidebarItem.startupApps.surface(lastMetric: .network, available: available) == .startupApps)
+        #expect(SidebarItem.services.surface(lastMetric: .network, available: available) == .services)
     }
 }
 

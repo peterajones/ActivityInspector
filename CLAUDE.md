@@ -5,7 +5,7 @@ table with an inspector, a Ports table, and a Performance section. A menu-bar it
 optional root helper for other users' processes. Five themes; meters are segmented LED bars.
 
 **Navigation (2026-11-14):** the sidebar lists `SidebarItem`s (Summary, Performance, Processes,
-Ports, System Info). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
+Ports, System Info, Startup Apps, Services). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
 Disk, Thermal, Energy, Battery, each where this Mac reports it) beside the chosen metric's
 panel. `surface` (a `Surface`) is still the one source of truth for which page shows; every
 metric surface maps to the Performance sidebar item, and choosing Performance reopens the last
@@ -19,6 +19,15 @@ masked until clicked. `SystemInfoModel` (owned by `ContentView`) preloads the fa
 ones drop out of the list, and reads the slow ones (Wi-Fi ~20 s, Fonts ~12 s) only when chosen.
 The runner reads the tool's output to end of file on a GCD thread; it never calls
 `waitUntilExit()`.
+
+**Startup Apps and Services** (`LaunchItems.swift`, `LaunchItemsModel`, one `LaunchItemsView`) read
+launchd's property lists (`~/Library/LaunchAgents` + `/Library/LaunchAgents`; `/Library/LaunchDaemons` +
+`/System/Library/LaunchDaemons`), running state from one `launchctl print <domain>` and enabled
+overrides from `launchctl print-disabled <domain>` (both work without root, `system` included), and
+each program's publisher from its code signature. Files with no Label are listed as ignored
+leftovers. Startup Apps' checkbox runs `launchctl disable` then `bootout` (or `enable` then
+`bootstrap`) in `gui/<uid>` after a confirmation; Services is read-only (daemons need root).
+`Launchctl.run` waits on the process's termination handler, never `waitUntilExit()`.
 Swift 6, SwiftUI, no third-party dependencies.
 
 ## Design status: functionality first, a design round later

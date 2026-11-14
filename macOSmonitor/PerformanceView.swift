@@ -79,7 +79,7 @@ struct PerformanceView<Page: View>: View {
         case .thermal: "thermometer.medium"
         case .energy: "bolt"
         case .battery: "battery.75percent"
-        case .summary, .processes, .ports, .systemInfo: "questionmark"
+        case .summary, .processes, .ports, .systemInfo, .startupApps, .services: "questionmark"
         }
     }
 
@@ -106,7 +106,7 @@ struct PerformanceView<Page: View>: View {
                      orientation: .horizontal, onColor: color, offColor: color.opacity(0.15), glows: true)
                 .frame(height: 10)
                 .frame(maxHeight: .infinity)
-        case .summary, .processes, .ports, .systemInfo: EmptyView()
+        case .summary, .processes, .ports, .systemInfo, .startupApps, .services: EmptyView()
         }
     }
 
