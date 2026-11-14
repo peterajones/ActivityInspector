@@ -3,9 +3,21 @@ import SwiftUI
 @testable import macOSmonitor
 
 struct ThemeTests {
-    @Test func thereAreFiveThemesWithDistinctIDs() {
-        #expect(Theme.all.count == 5)
-        #expect(Set(Theme.all.map(\.id)).count == 5)
+    /// Light and Dark sit under System in the picker, then the fixed palettes.
+    @Test func themesInPickerOrderWithDistinctIDs() {
+        #expect(Theme.all.map(\.id) == ["system", "light", "dark", "vfd-green", "vfd-amber", "vfd-blue", "mono"])
+        #expect(Theme.all.map(\.name) == ["System", "Light", "Dark", "VFD Green", "VFD Amber", "VFD Blue", "Monochrome"])
+        #expect(Set(Theme.all.map(\.id)).count == Theme.all.count)
+    }
+
+    /// System follows the Mac's appearance; Light and Dark fix it for macOSmonitor's windows.
+    @Test func lightAndDarkFixTheWindowsAppearanceSystemFollowsTheMac() {
+        #expect(Theme.system.windowAppearance == nil)
+        #expect(Theme.light.windowAppearance == .light)
+        #expect(Theme.dark.windowAppearance == .dark)
+        for theme in Theme.all where !theme.usesSystemColors {
+            #expect(theme.windowAppearance == nil, "\(theme.name) keeps its own fixed palette")
+        }
     }
 
     @Test func namedFallsBackToSystemForUnknownIDs() {
@@ -46,15 +58,16 @@ struct ThemeTests {
         }
     }
 
-    @Test func systemThemeIsTheOnlyOneUsingSemanticColours() {
-        #expect(Theme.system.usesSystemColors)
-        #expect(Theme.all.filter(\.usesSystemColors).count == 1)
+    @Test func systemLightAndDarkAreTheOnesUsingSemanticColours() {
+        #expect(Theme.all.filter(\.usesSystemColors).map(\.id) == ["system", "light", "dark"])
     }
 
     /// The process table forces this scheme so its uncolourable header and scrollers match
     /// the palette: dark for every fixed (dark) theme, untouched for System.
     @Test func onlyFixedThemesForceDarkAppearance() {
         #expect(Theme.system.forcedColorScheme == nil)
+        #expect(Theme.light.forcedColorScheme == .light)
+        #expect(Theme.dark.forcedColorScheme == .dark)
         for theme in Theme.all where !theme.usesSystemColors {
             #expect(theme.forcedColorScheme == .dark, "\(theme.name)")
         }

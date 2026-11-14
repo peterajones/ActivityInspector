@@ -45,15 +45,27 @@ struct Theme: Identifiable, Equatable, Sendable {
     /// Literal samples for the contrast test; nil for the System theme.
     let textSample: RGB?
     let backgroundSample: RGB?
+    /// Light or dark for macOSmonitor's windows whatever the Mac is set to; nil follows the Mac.
+    var windowAppearance: ColorScheme? = nil
 
-    static let system = Theme(
-        id: "system", name: "System",
-        graphLine: .accentColor, graphFill: .accentColor.opacity(0.2),
-        gridLine: .gray.opacity(0.3), panelBackground: Color(nsColor: .windowBackgroundColor),
-        primaryText: .primary, secondaryText: .secondary,
-        meterOn: .accentColor, meterOff: .gray.opacity(0.2),
-        usesSystemColors: true, textSample: nil, backgroundSample: nil
-    )
+    /// Follows the Mac's light or dark appearance.
+    static let system = semantic(id: "system", name: "System", appearance: nil)
+    /// The System palette, always light or always dark.
+    static let light = semantic(id: "light", name: "Light", appearance: .light)
+    static let dark = semantic(id: "dark", name: "Dark", appearance: .dark)
+
+    /// The semantic (system-coloured) palette, optionally fixed to one appearance.
+    private static func semantic(id: String, name: String, appearance: ColorScheme?) -> Theme {
+        Theme(
+            id: id, name: name,
+            graphLine: .accentColor, graphFill: .accentColor.opacity(0.2),
+            gridLine: .gray.opacity(0.3), panelBackground: Color(nsColor: .windowBackgroundColor),
+            primaryText: .primary, secondaryText: .secondary,
+            meterOn: .accentColor, meterOff: .gray.opacity(0.2),
+            usesSystemColors: true, textSample: nil, backgroundSample: nil,
+            windowAppearance: appearance
+        )
+    }
 
     /// Per-metric hues for the System palette, as literal samples so contrast is testable.
     ///
@@ -86,7 +98,7 @@ struct Theme: Identifiable, Equatable, Sendable {
     /// The appearance to force on native controls that the palette can't colour directly
     /// (the process table's header, section headers and scrollers). Fixed palettes are dark,
     /// so they force dark; nil leaves the System theme following the user's appearance.
-    var forcedColorScheme: ColorScheme? { usesSystemColors ? nil : .dark }
+    var forcedColorScheme: ColorScheme? { usesSystemColors ? windowAppearance : .dark }
 
     /// The area fill under a metric's graph line: the same hue as `color(for:)`, faint.
     /// Fixed palettes are monochrome, so their `graphFill` already matches.
@@ -104,7 +116,7 @@ struct Theme: Identifiable, Equatable, Sendable {
     static let monochrome = fixed(id: "mono", name: "Monochrome",
                                   accent: RGB(r: 0.88, g: 0.88, b: 0.88))
 
-    static let all: [Theme] = [.system, .vfdGreen, .vfdAmber, .vfdBlue, .monochrome]
+    static let all: [Theme] = [.system, .light, .dark, .vfdGreen, .vfdAmber, .vfdBlue, .monochrome]
 
     static func named(_ id: String) -> Theme {
         all.first { $0.id == id } ?? .system

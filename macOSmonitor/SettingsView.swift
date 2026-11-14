@@ -51,5 +51,6 @@ struct SettingsView: View {
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
         .task { await helper.refresh() }
+        .preferredColorScheme(Theme.named(themeID).windowAppearance)
     }
 }

@@ -124,6 +124,8 @@ struct ContentView: View {
         }
         .navigationTitle("macOSmonitor")
         .environment(\.theme, theme)
+        // Light and Dark fix the window's appearance; System (nil) follows the Mac.
+        .preferredColorScheme(theme.windowAppearance)
         .environment(\.bloom, Bloom(level: bloomLevel))
         .environment(\.graphsAnimate, windowVisible)
         .background(WindowVisibilityReader { windowVisible = $0 })
