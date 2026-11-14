@@ -118,6 +118,16 @@ struct LaunchPublisherTests {
         #expect(CodePublisher.publisher(ofProgramAt: unsigned.path) == "Unsigned")
     }
 
+    /// Every result that means "not verified" is flagged in the table, not just "Unsigned".
+    @Test func unverifiedResultsAreFlagged() {
+        for result in ["Unsigned", "Program missing", "Can’t be checked"] {
+            #expect(CodePublisher.isUnverified(result), "\(result)")
+        }
+        for result in ["Apple", "Google LLC", "—"] {
+            #expect(!CodePublisher.isUnverified(result), "\(result)")
+        }
+    }
+
     /// Privileged helpers are often execute-only (rwx--x--x): the signature can't be read, which
     /// isn't the same as having none.
     @Test func aProgramWeCantReadIsNotCalledUnsigned() throws {

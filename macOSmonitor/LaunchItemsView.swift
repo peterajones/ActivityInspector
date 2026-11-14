@@ -140,10 +140,10 @@ struct LaunchItemsView: View {
         .monospacedDigit()
     }
 
-    /// Unsigned and missing programs stand out.
+    /// Anything whose signature wasn't verified stands out.
     private func publisherText(_ row: LaunchRow) -> some View {
         Text(row.publisher)
-            .foregroundStyle(["Unsigned", "Program missing"].contains(row.publisher) ? .orange : theme.primaryText)
+            .foregroundStyle(CodePublisher.isUnverified(row.publisher) ? .orange : theme.primaryText)
     }
 
     @ViewBuilder private var detail: some View {

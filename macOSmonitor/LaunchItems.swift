@@ -160,22 +160,31 @@ enum CodePublisher {
         return name
     }
 
+    static let unsigned = "Unsigned"
+    static let missing = "Program missing"
+    static let uncheckable = "Can’t be checked"
+
+    /// Results that mean the signature wasn't verified: the table flags them.
+    nonisolated static func isUnverified(_ publisher: String) -> Bool {
+        [unsigned, missing, uncheckable].contains(publisher)
+    }
+
     /// "Apple", a developer's name, "Unsigned", "Can’t be checked" (not readable), or "Program missing".
     nonisolated static func publisher(ofProgramAt path: String) -> String {
-        guard FileManager.default.fileExists(atPath: path) else { return "Program missing" }
+        guard FileManager.default.fileExists(atPath: path) else { return missing }
         // Privileged helpers are often execute-only: unreadable isn't the same as unsigned.
-        guard FileManager.default.isReadableFile(atPath: path) else { return "Can’t be checked" }
+        guard FileManager.default.isReadableFile(atPath: path) else { return uncheckable }
         var code: SecStaticCode?
         guard SecStaticCodeCreateWithPath(URL(fileURLWithPath: path) as CFURL, [], &code) == errSecSuccess,
-              let code else { return "Unsigned" }
+              let code else { return unsigned }
         var info: CFDictionary?
         guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess,
-              let dictionary = info as? [String: Any] else { return "Unsigned" }
+              let dictionary = info as? [String: Any] else { return unsigned }
         if dictionary[kSecCodeInfoPlatformIdentifier as String] != nil { return "Apple" }
         guard let certificates = dictionary[kSecCodeInfoCertificates as String] as? [SecCertificate],
               let leaf = certificates.first,
               let summary = SecCertificateCopySubjectSummary(leaf) as String?
-        else { return "Unsigned" }
+        else { return unsigned }
         return name(fromCertificateSummary: summary)
     }
 }
