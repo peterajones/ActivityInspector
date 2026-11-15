@@ -4,6 +4,8 @@ _Single source of truth for unfinished work in this project. Tick an item when i
 
 ## Next
 
+- [ ] Make MetricGraphLifecycleTests.visibilityReaderFollowsItsWindow wait for each visibility change (poll with a timeout) instead of fixed 300 ms sleeps: it failed once in a full parallel run on 2026-11-15, then passed 3 of 3 alone (from: test run, 2026-11-15)
+
 ## Later
 - [ ] Decide whether to add a Disk Space page: what is using the disk, by folder; scanning is slow, so it needs care; revisit after the App Store edition ships (moved to Later by Peter, 2026-11-15) (from: candidates list, 2026-11-14)
 - [ ] App Store edition: add a sandboxed build of the app (Peter sets up the target/configuration in Xcode) with an APP_STORE compile flag that compiles out every private-API reader (SMC, IOReport, HID thermal, NetworkStatistics) and the helper, and hides Quit/Force Quit, Ports and Energy; see CLAUDE.md "Distribution" (from: Peter, 2026-11-13)

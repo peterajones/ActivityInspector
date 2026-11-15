@@ -162,12 +162,22 @@ struct ProfilerNode: Identifiable, Equatable, Sendable {
     /// Identifies this Mac or a device (serials, hardware IDs, MAC addresses, user name): shown
     /// masked until clicked, so screenshots of the app are safe to share.
     var isSensitive = false
+    /// The title itself identifies something (a nearby Wi-Fi network's name).
+    var titleIsSensitive = false
+
+    /// Lists whose items are named after something identifying: nearby Wi-Fi networks.
+    nonisolated static func namesItsItemsSensitively(key: String) -> Bool {
+        key == "spairport_airport_other_local_wireless_networks"
+    }
 
     nonisolated static func isSensitive(key: String) -> Bool {
         let key = key.lowercased()
         return ["serial", "uuid", "udid", "mac_address", "mac address", "hardware_address", "hardwareaddress"]
             .contains { key.contains($0) }
-            || ["controller_address", "device_address", "user_name"].contains(key)
+            || ["controller_address", "device_address", "user_name",
+                // The Mac's name and its network's addresses (security review, 2026-11-15).
+                "local_host_name", "ip_address", "addresses", "router", "serveraddress", "serveraddresses",
+                "arpresolvedipaddress", "dhcp_routers", "dhcp_domain_name_servers", "dhcp_server_identifier"].contains(key)
     }
 }
 
@@ -207,8 +217,11 @@ enum ProfilerParser {
                 groups.append(ProfilerNode(id: childID, title: title, value: nil,
                                            children: rows(nested, id: childID, labels: labels)))
             case let list as [Any] where list.contains(where: { $0 is [String: Any] }):
-                groups.append(ProfilerNode(id: childID, title: title, value: nil,
-                                           children: children(list, id: childID, labels: labels)))
+                var items = children(list, id: childID, labels: labels)
+                if ProfilerNode.namesItsItemsSensitively(key: key) {
+                    items = items.map { var item = $0; item.titleIsSensitive = true; return item }
+                }
+                groups.append(ProfilerNode(id: childID, title: title, value: nil, children: items))
             case let list as [Any]:
                 leaves.append(ProfilerNode(id: childID, title: title,
                                            value: list.map { text($0, labels: labels) }.joined(separator: ", "),

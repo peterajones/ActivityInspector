@@ -108,6 +108,11 @@ struct ProfilerParserTests {
                     "sppower_battery_serial_number", "USBDeviceKeySerialNumber", "user_name"] {
             #expect(ProfilerNode.isSensitive(key: key), "\(key)")
         }
+        // The network's own addresses, and the Mac's name (security review, 2026-11-15).
+        for key in ["local_host_name", "ip_address", "Addresses", "Router", "ServerAddress", "ServerAddresses",
+                    "ARPResolvedIPAddress", "dhcp_routers", "dhcp_domain_name_servers", "dhcp_server_identifier"] {
+            #expect(ProfilerNode.isSensitive(key: key), "\(key)")
+        }
         for key in ["spext_load_address", "coreaudio_device_srate", "machine_model", "DestinationAddress"] {
             #expect(!ProfilerNode.isSensitive(key: key), "\(key)")
         }
@@ -134,6 +139,21 @@ struct ProfilerParserTests {
         #expect(leaf(["Mac address"])?.value == "aa:bb, cc:dd")
         #expect(leaf(["Mouse", "Device address"])?.isSensitive == true)
         #expect(leaf(["Mouse", "Device minorType"])?.isSensitive == false)
+    }
+
+    /// Nearby Wi-Fi networks arrive as items named after themselves: those titles are marked.
+    @Test func wiFiNetworkNamesAreMarkedAsSensitiveTitles() throws {
+        let nodes = try #require(ProfilerParser.parse(Data("""
+            {"SPAirPortDataType":[{"spairport_airport_interfaces":[{"_name":"en0",
+              "spairport_current_network_information":{"_name":"HomeNet","spairport_network_channel":"36"},
+              "spairport_airport_other_local_wireless_networks":[{"_name":"Neighbour","spairport_network_channel":"1"}]}]}]}
+            """.utf8), type: "SPAirPortDataType", labels: labels))
+        var titles: [(String, Bool)] = []
+        func walk(_ node: ProfilerNode) { titles.append((node.title, node.titleIsSensitive)); node.children.forEach(walk) }
+        nodes.forEach(walk)
+        #expect(!titles.contains { $0.0 == "HomeNet" })             // a nested group: titled by its key
+        #expect(titles.first { $0.0 == "Neighbour" }?.1 == true)
+        #expect(titles.first { $0.0 == "en0" }?.1 == false)
     }
 
     /// Hidden values all look alike, so the dots don't give away even a value's length.

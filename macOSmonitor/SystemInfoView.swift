@@ -228,9 +228,13 @@ private struct ProfilerNodeRow: View {
                 }
                 .padding(.leading, 12)
             } label: {
-                Text(node.title)
-                    .font(depth == 0 ? .headline : .body)
-                    .foregroundStyle(theme.primaryText)
+                if node.titleIsSensitive {
+                    MaskedValue(text: node.title)      // a nearby network's name, as dots until clicked
+                } else {
+                    Text(node.title)
+                        .font(depth == 0 ? .headline : .body)
+                        .foregroundStyle(theme.primaryText)
+                }
             }
             .padding(.vertical, 3)
         }

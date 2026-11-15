@@ -98,7 +98,47 @@ struct SystemInfoReportTests {
                                               generated: Date(timeIntervalSince1970: 0))
         #expect(withDetails.contains("C02XK1ABJG5J"))
         #expect(withDetails.contains("includes identifying details"))
-        #expect(without.contains("Identifying details (serial numbers, hardware IDs, addresses, user name) are left out."))
+        #expect(without.contains("Identifying details (serial numbers, hardware IDs, addresses, network names, user and computer names) are left out."))
+    }
+
+    // MARK: Names that turn up anywhere (security review, 2026-11-15)
+
+    private let names = IdentifyingNames(home: "/Users/pat", userName: "pat", fullName: "Pat Example",
+                                         computerNames: ["Pat’s MacBook Pro", "Pats-MacBook-Pro"])
+
+    @Test func namesAreReplacedWhereverTheyAppear() {
+        #expect(names.scrub("/Users/pat/Applications/Game.app") == "~/Applications/Game.app")
+        #expect(names.scrub("Pat’s MacBook Pro") == "<this Mac>")
+        #expect(names.scrub("kernel on Pats-MacBook-Pro.local: user pat logged in") == "kernel on <this Mac>.local: user <user> logged in")
+        #expect(names.scrub("Owner: Pat Example") == "Owner: <user>")
+        #expect(names.scrub("Patterns.app") == "Patterns.app")          // "pat" only as a whole word
+        #expect(names.scrub("compatible") == "compatible")
+    }
+
+    @Test func aShortOrMissingUserNameIsntReplaced() {
+        let short = IdentifyingNames(home: "/Users/al", userName: "al", fullName: "", computerNames: [""])
+        #expect(short.scrub("/Users/al/x and also al") == "~/x and also al")
+    }
+
+    @Test func theReportScrubsTitlesAndValuesUnlessAskedNotTo() {
+        let nodes = [group("Pat’s MacBook Pro", [leaf("Mount Point", "/Volumes/Pat’s MacBook Pro"),
+                                                 leaf("Location", "/Users/pat/Applications/Game.app")])]
+        let off = SystemInfoReport.text(for: item, nodes: nodes, includesIdentifying: false, names: names)
+        #expect(off.contains("<this Mac>\n  Mount Point: /Volumes/<this Mac>\n  Location: ~/Applications/Game.app\n"))
+        #expect(!off.contains("pat") && !off.contains("Pat"))
+        let on = SystemInfoReport.text(for: item, nodes: nodes, includesIdentifying: true, names: names)
+        #expect(on.contains("Pat’s MacBook Pro\n  Mount Point: /Volumes/Pat’s MacBook Pro\n"))
+    }
+
+    /// Wi-Fi network names (yours and the neighbours') are group titles, not values.
+    @Test func wiFiNetworkNamesAreLeftOutAsTitles() {
+        let network = ProfilerNode(id: "n", title: "HomeNet-5G", value: nil,
+                                   children: [leaf("Channel", "36")], isSensitive: false, titleIsSensitive: true)
+        let off = SystemInfoReport.text(for: item, nodes: [network], includesIdentifying: false, names: names)
+        #expect(off.contains("Wi-Fi network\n  Channel: 36\n"))
+        #expect(!off.contains("HomeNet"))
+        let on = SystemInfoReport.text(for: item, nodes: [network], includesIdentifying: true, names: names)
+        #expect(on.contains("HomeNet-5G\n"))
     }
 }
 
@@ -184,5 +224,29 @@ final class GatedRunner: SystemProfilerRunning, @unchecked Sendable {
             }
         }
         return Data(#"{"\#(type)":[{"_name":"x","a":"1"}]}"#.utf8)
+    }
+}
+
+/// Against this Mac: with identifying details off, the items where names turned up give none away.
+struct SystemInfoReportSystemTests {
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: "/usr/sbin/system_profiler")))
+    func thisMacsReportGivesAwayNoNames() async throws {
+        let labels = ProfilerLabels.system(languages: ["en"])
+        var states: [String: SystemInfoState] = [:]
+        for id in ["SPSoftwareDataType", "SPApplicationsDataType", "SPStorageDataType", "SPNetworkDataType", "SPLogsDataType"] {
+            let data = try #require(await SystemProfilerRunner().run(id))
+            states[id] = .loaded(try #require(ProfilerParser.parse(data, type: id, labels: labels)))
+        }
+        let names = IdentifyingNames.thisMac()
+        let report = SystemInfoReport.report(states: states, includesIdentifying: false, generated: .now, names: names)
+        #expect(report.count > 1_000)
+        // The Mac's names found independently, not from the code under test.
+        let computerName = Host.current().localizedName ?? ""
+        let hostName = ProcessInfo.processInfo.hostName.replacingOccurrences(of: ".local", with: "")
+        #expect(computerName.count >= 3 && hostName.count >= 3)
+        for secret in [NSHomeDirectory(), NSUserName(), computerName, hostName] where secret.count >= 3 {
+            #expect(!report.contains(secret), "report contains \(secret.count)-character identifying text")
+        }
+        #expect(report.contains("~/") || report.contains("<this Mac>"))   // something was replaced
     }
 }

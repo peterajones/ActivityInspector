@@ -20,7 +20,10 @@ ones drop out of the list, and reads the slow ones (Wi-Fi ~20 s, Fonts ~12 s) on
 The runner reads the tool's output to end of file on a GCD thread; it never calls
 `waitUntilExit()`. Copy (one item) and Export Report… (every item, slow ones read first by
 `loadAll`) write plain text via `SystemInfoReport`, leaving identifying values out unless "Include
-identifying details" is on. `load` keeps each read under way, so asking again waits for it.
+identifying details" is on. **Keys alone don't catch everything** (security review, 2026-11-15): the user
+name sits in paths and logs, the Mac's name in volume names, nearby Wi-Fi networks are item *titles*.
+So `IdentifyingNames.scrub` also replaces the home folder, user and computer names in every title and
+value, and Wi-Fi items carry `titleIsSensitive`. `SystemInfoReportSystemTests` checks a real report. `load` keeps each read under way, so asking again waits for it.
 
 **Installed Apps** (`InstalledApps.swift`, `InstalledAppsModel`, `InstalledAppsView`) reads
 `system_profiler -json SPApplicationsDataType` once, when first shown (~2 s): kind from `arch_kind`,
