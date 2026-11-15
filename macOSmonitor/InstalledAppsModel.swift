@@ -43,7 +43,7 @@ final class InstalledAppsModel {
     private let linkedApps: @Sendable (String) -> [InstalledApp]
 
     init(runner: any SystemProfilerRunning = SystemProfilerRunner(), sizer: any AppSizing = AppSizer(),
-         home: String = NSHomeDirectory(),
+         home: String = UserHome.path,
          linkedApps: @escaping @Sendable (String) -> [InstalledApp] = InstalledAppLinks.find(home:)) {
         self.linkedApps = linkedApps
         self.runner = runner

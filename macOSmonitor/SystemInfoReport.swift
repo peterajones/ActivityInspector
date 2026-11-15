@@ -100,7 +100,7 @@ struct IdentifyingNames: Sendable {
     nonisolated static func thisMac() -> IdentifyingNames {
         let computerNames = [SCDynamicStoreCopyComputerName(nil, nil) as String?,
                              SCDynamicStoreCopyLocalHostName(nil) as String?].compactMap { $0 }
-        return IdentifyingNames(home: NSHomeDirectory(), userName: NSUserName(), fullName: NSFullUserName(),
+        return IdentifyingNames(home: UserHome.path, userName: NSUserName(), fullName: NSFullUserName(),
                                 computerNames: computerNames)
     }
 }

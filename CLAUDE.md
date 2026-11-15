@@ -122,6 +122,11 @@ presence (cheap or free, to reinforce him as a developer; he already has an iOS 
   (397 of 468), Language & Region, Logs (5 of 10), Smart Cards, Firewall (no per-app list).
   **Empty:** Bluetooth, Camera, Secure Element, Extensions, Configuration Profiles, Legacy Software.
   Untested risk: whether App Review objects to running a system tool; fallback is public frameworks.
+- **Home folder in the sandbox (probed 2026-11-15):** `NSHomeDirectory()` is the container
+  (`~/Library/Containers/<id>/Data`), and the real `~/Library/LaunchAgents` and `~/Applications` are
+  denied. `/Library/LaunchAgents`, both LaunchDaemons folders, `/Applications`, code signatures and
+  `launchctl print`/`print-disabled` all work. **Use `UserHome.path`** (the user database's entry), never
+  `NSHomeDirectory()`: a test fails if any other file asks for it.
 - So the App Store edition is a **monitor**, not a manager: no Quit/Force Quit, Ports, Energy,
   clock speeds or temperatures (thermal state only), no helper. Ship it after the design round.
 

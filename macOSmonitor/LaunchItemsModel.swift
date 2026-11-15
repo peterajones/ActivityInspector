@@ -38,7 +38,7 @@ final class LaunchItemsModel {
          files: any LaunchFilesProviding = LaunchFiles(),
          launchctl: any LaunchctlRunning = Launchctl(),
          uid: uid_t = getuid(),
-         userAgentsDirectory: String = NSHomeDirectory() + "/Library/LaunchAgents",
+         userAgentsDirectory: String = UserHome.path + "/Library/LaunchAgents",
          publisher: @escaping @Sendable (String) -> String = CodePublisher.publisher(ofProgramAt:)) {
         self.kind = kind
         self.files = files
