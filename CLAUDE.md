@@ -91,19 +91,23 @@ small `Sendable` protocol (`HostStatsProviding`, `NetworkStatsProviding`, `Batte
 `ProcessSignal`) with a real struct and a test fake. This is what makes the samplers and models
 testable — keep it when adding a data source.
 
-**Private APIs are allowed (decided 2026-11-12), with fallbacks, in the Full edition only.**
-The App Store edition compiles them out (see "Distribution" below). Temperature, clock speed
+**Private APIs are allowed (decided 2026-11-12), with fallbacks.** The app ships outside the App
+Store (see "Distribution" below), so nothing needs compiling out. Temperature, clock speed
 and power draw need IOReport / SMC / private HID sensors.
 Each private read goes behind its own provider protocol and must return nil — hiding its
 panel — when the interface is missing or changes shape, never crash. Re-run the
 real-hardware tests after each macOS update.
 
-**Distribution: one codebase, two editions (decided 2026-11-13).** Peter wants a Mac App Store
-presence (cheap or free, to reinforce him as a developer; he already has an iOS app there).
-- **App Store edition:** sandboxed, public APIs only. Private-API readers are **compiled out**, not
-  just disabled, so App Review's scan finds nothing; panels hide because their providers return nil.
-- **Full edition:** today's app (unsandboxed, private APIs, root helper), for Peter, and possibly
-  Developer ID from his own site later.
+**Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
+Developer ID and notarized, from his own site, with a free tier and paid features on top (like TMOG,
+which inspired the design). The split and the licensing are still to decide (TODO).
+- **The App Store edition was dropped (2026-11-15).** The plan from 2026-11-13 was a sandboxed,
+  public-API build beside the full one. Peter reviewed it built and judged it "not a sellable product":
+  every page lost the one thing that made it worth opening (quitting, switching startup items,
+  temperatures, Ports, the helper). Its code was discarded, not kept. Other Mac tools that sell on the
+  App Store (iStat Menus, CleanMyMac) keep a reduced App Store version whose remaining features still
+  work in the sandbox. **If the App Store comes back, it's as a purpose-built free version** (TODO
+  Later), not this app with features removed. The probe results below are kept for that.
 - What the App Sandbox allows, probed 2026-11-13 with sandboxed test binaries on macOS 27.2:
   - **Works:** listing processes via `sysctl(KERN_PROC_ALL)` (`proc_listpids` and `proc_listallpids`
     return **0** in the sandbox); task info, names, paths, owners and arguments for the user's own
@@ -127,8 +131,8 @@ presence (cheap or free, to reinforce him as a developer; he already has an iOS 
   denied. `/Library/LaunchAgents`, both LaunchDaemons folders, `/Applications`, code signatures and
   `launchctl print`/`print-disabled` all work. **Use `UserHome.path`** (the user database's entry), never
   `NSHomeDirectory()`: a test fails if any other file asks for it.
-- So the App Store edition is a **monitor**, not a manager: no Quit/Force Quit, Ports, Energy,
-  clock speeds or temperatures (thermal state only), no helper. Ship it after the design round.
+- So a sandboxed build can only be a **monitor**, not a manager: no Quit/Force Quit, Ports, Energy,
+  clock speeds or temperatures (thermal state only), no helper, read-only Startup Apps.
 
 **The privileged helper (`macOSmonitorHelper` target, added 2026-11-13)** is a root launchd daemon
 registered with `SMAppService.daemon` (macOSmonitor ▸ Privileged Helper…; the user approves it under
