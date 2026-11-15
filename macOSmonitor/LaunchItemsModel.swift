@@ -64,6 +64,29 @@ final class LaunchItemsModel {
 
     var selectedRow: LaunchRow? { rows.first { $0.id == selection } }
 
+    /// A checkbox click waiting for the user to confirm it.
+    struct PendingChange: Equatable, Sendable {
+        let row: LaunchRow
+        let enable: Bool
+    }
+
+    private(set) var pendingChange: PendingChange?
+
+    /// Asks first: nothing changes until `confirm`.
+    func requestChange(_ row: LaunchRow, enable: Bool) {
+        pendingChange = PendingChange(row: row, enable: enable)
+    }
+
+    func cancelChange() {
+        pendingChange = nil
+    }
+
+    /// Runs a confirmed change; nil on success, else what went wrong.
+    func confirm(_ change: PendingChange) async -> String? {
+        pendingChange = nil
+        return await setEnabled(change.row, change.enable)
+    }
+
     /// Reads the files, then launchd's running and enabled state.
     func refresh() async {
         let files = files, directories = directories, publisher = publisher

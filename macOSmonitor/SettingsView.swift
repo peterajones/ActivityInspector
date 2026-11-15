@@ -3,13 +3,18 @@ import SwiftUI
 /// macOSmonitor ▸ Settings… (⌘,): the app's preferences in one place. Every control writes
 /// the same AppStorage key as the menu or popover that also offers it, so they always agree.
 struct SettingsView: View {
-    @AppStorage("themeID") private var themeID: String = Theme.system.id
+    @AppStorage(Theme.storageKey) private var themeID: String = Theme.system.id
     @AppStorage(SaturationLevel.storageKey) private var saturationLevel = SaturationLevel.defaultLevel
     @AppStorage(Bloom.storageKey) private var bloomLevel = Bloom.defaultLevel
     @AppStorage(MenuBarSettings.key) private var showsMenuBarExtra = MenuBarSettings.shownByDefault
     @AppStorage(CPUTimeFormat.storageKey) private var cpuTimeFormat: CPUTimeFormat = .adaptive
 
     @State private var helper = PrivilegedHelperModel()
+
+    /// The helper's state in the status bar's words.
+    nonisolated static func helperStatus(_ state: PrivilegedHelperModel.State) -> String {
+        HelperSummary(state).text
+    }
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -43,7 +48,7 @@ struct SettingsView: View {
             }
 
             Section("Privileged Helper") {
-                LabeledContent("Status", value: HelperSummary(helper.state).text)
+                LabeledContent("Status", value: Self.helperStatus(helper.state))
                 Button("Privileged Helper…") { openWindow(id: macOSmonitorApp.helperWindowID) }
             }
         }

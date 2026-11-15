@@ -49,6 +49,9 @@ struct Theme: Identifiable, Equatable, Sendable {
     var windowAppearance: ColorScheme? = nil
 
     /// Follows the Mac's light or dark appearance.
+    /// The @AppStorage key of the chosen theme's id.
+    static let storageKey = "themeID"
+
     static let system = semantic(id: "system", name: "System", appearance: nil)
     /// The System palette, always light or always dark.
     static let light = semantic(id: "light", name: "Light", appearance: .light)

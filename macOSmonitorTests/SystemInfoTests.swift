@@ -115,7 +115,85 @@ struct ProfilerParserTests {
         #expect(nodes.first?.children.first { $0.title == "Serial number" }?.isSensitive == true)
         #expect(nodes.first?.children.first { $0.title == "Chip" }?.isSensitive == false)
     }
+
+    /// Masking follows the key wherever it sits: inside a group, in a device list, or as a list.
+    @Test func identifyingValuesAreMaskedAtAnyDepth() throws {
+        let nodes = try #require(parse("""
+            {"SPAudioDataType":[{"_name":"Mac","battery":{"sppower_battery_serial_number":"F5D"},
+              "mac_address":["aa:bb","cc:dd"],
+              "_items":[{"_name":"Mouse","device_address":"11-22","device_minorType":"Mouse"}]}]}
+            """))
+        let mac = try #require(nodes.first)
+        func leaf(_ path: [String]) -> ProfilerNode? {
+            var node: ProfilerNode? = mac
+            for title in path { node = node?.children.first { $0.title == title } }
+            return node
+        }
+        #expect(leaf(["Battery", "Sppower battery serial number"])?.isSensitive == true)
+        #expect(leaf(["Mac address"])?.isSensitive == true)
+        #expect(leaf(["Mac address"])?.value == "aa:bb, cc:dd")
+        #expect(leaf(["Mouse", "Device address"])?.isSensitive == true)
+        #expect(leaf(["Mouse", "Device minorType"])?.isSensitive == false)
+    }
+
+    /// Hidden values all look alike, so the dots don't give away even a value's length.
+    @Test func aMaskedValueShowsOnlyDotsUntilRevealed() {
+        #expect(MaskedValue.shown("C02XK1ABJG5J", revealed: false) == "••••••••")
+        #expect(MaskedValue.shown("ab", revealed: false) == "••••••••")
+        #expect(MaskedValue.shown("C02XK1ABJG5J", revealed: true) == "C02XK1ABJG5J")
+    }
 }
+
+/// Reading reporters' label tables from a folder laid out like /System/Library/SystemProfiler.
+struct ProfilerLabelsLoadingTests {
+    private func folder(_ reporters: [String: NSDictionary]) throws -> URL {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("labels-\(UUID().uuidString)")
+        for (name, tables) in reporters {
+            let resources = root.appendingPathComponent("\(name)/Contents/Resources")
+            try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+            try tables.write(to: resources.appendingPathComponent("Localizable.loctable"))
+        }
+        return root
+    }
+
+    /// The tables sit beside bookkeeping such as "LocProvenance", whose values aren't strings.
+    private let audio: NSDictionary = ["LocProvenance": ["en": 1, "fr": 2],
+                                       "en": ["k_audio": "Audio", "k_shared": "Shared (audio)"],
+                                       "fr": ["k_audio": "Son"]]
+    private let power: NSDictionary = ["en": ["k_power": "Power", "k_shared": "Shared (power)"]]
+
+    @Test func eachReporterUsesTheFirstLanguageItHas() throws {
+        let root = try folder(["Audio.spreporter": audio, "Power.spreporter": power])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let labels = ProfilerLabels.load(root: root, languages: ["fr-CA"])
+        #expect(labels.label("k_audio") == "Son")        // "fr-CA" falls back to "fr"
+        #expect(labels.label("k_power") == "Power")      // no French table: English
+    }
+
+    @Test func aLanguageNoReporterHasFallsBackToEnglish() throws {
+        let root = try folder(["Audio.spreporter": audio, "Power.spreporter": power])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let labels = ProfilerLabels.load(root: root, languages: ["de"])
+        #expect(labels.label("k_audio") == "Audio")
+        #expect(labels.label("k_power") == "Power")
+        #expect(["Shared (audio)", "Shared (power)"].contains(labels.label("k_shared")))
+    }
+
+    @Test func aKeyNoTableHasIsTidied() throws {
+        let root = try folder(["Audio.spreporter": audio, "Notes.txt": ["en": ["k_other": "Ignored"]]])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let labels = ProfilerLabels.load(root: root, languages: ["en"])
+        #expect(labels.label("k_other") == "K other")    // only .spreporter folders count
+        #expect(labels.label("spaudio_missing") == "Spaudio missing")
+    }
+
+    @Test func noFolderMeansNoLabelsNotACrash() {
+        let labels = ProfilerLabels.load(root: URL(fileURLWithPath: "/nonexistent-\(UUID().uuidString)"),
+                                         languages: ["en"])
+        #expect(labels.table.isEmpty)
+    }
+}
+
 
 /// Runs against this Mac's own label tables.
 struct ProfilerLabelsSystemTests {

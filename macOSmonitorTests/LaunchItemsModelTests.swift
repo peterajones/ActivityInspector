@@ -146,4 +146,49 @@ struct LaunchItemsModelTests {
         model.filter = "PUBLISHER OF /opt"
         #expect(model.visibleRows.map(\.item.label) == ["homebrew.caddy"])
     }
+
+    // MARK: Confirmation
+
+    @Test func clickingTheCheckboxOnlyAsksFirst() async throws {
+        let (model, _, launchctl) = startup()
+        await model.refresh()
+        let row = try #require(model.rows.first { $0.item.label == "com.dropbox.agent" })
+        model.requestChange(row, enable: false)
+        #expect(model.pendingChange == LaunchItemsModel.PendingChange(row: row, enable: false))
+        #expect(launchctl.commands.isEmpty)
+    }
+
+    @Test func decliningTheConfirmationRunsNothing() async throws {
+        let (model, _, launchctl) = startup()
+        await model.refresh()
+        let row = try #require(model.rows.first { $0.item.label == "com.dropbox.agent" })
+        model.requestChange(row, enable: false)
+        model.cancelChange()
+        #expect(model.pendingChange == nil)
+        #expect(launchctl.commands.isEmpty)
+    }
+
+    @Test func confirmingRunsTheChangeAndClearsTheRequest() async throws {
+        let (model, _, launchctl) = startup()
+        await model.refresh()
+        let row = try #require(model.rows.first { $0.item.label == "homebrew.caddy" })
+        model.requestChange(row, enable: true)
+        let change = try #require(model.pendingChange)
+        let error = await model.confirm(change)
+        #expect(error == nil)
+        #expect(model.pendingChange == nil)
+        #expect(launchctl.commands == [["enable", "gui/501/homebrew.caddy"],
+                                       ["bootstrap", "gui/501", "\(home)/homebrew.caddy.plist"]])
+    }
+
+    /// Agents in /Library/LaunchAgents run in each user's own session, not the system domain.
+    @Test func anAllUsersAgentChangesInThisUsersSession() async throws {
+        let (model, _, launchctl) = startup()
+        await model.refresh()
+        let row = try #require(model.rows.first { $0.item.label == "us.zoom.updater" })
+        #expect(row.item.scope == .allUsersAgent)
+        _ = await model.setEnabled(row, false)
+        #expect(launchctl.commands == [["disable", "gui/501/us.zoom.updater"],
+                                       ["bootout", "gui/501/us.zoom.updater"]])
+    }
 }

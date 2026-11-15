@@ -8,8 +8,6 @@ struct LaunchItemsView: View {
     @Bindable var model: LaunchItemsModel
     @Environment(\.theme) private var theme
 
-    /// An Enabled checkbox click waiting for confirmation.
-    @State private var pending: (row: LaunchRow, enable: Bool)?
     @State private var error: String?
     @State private var busy = false
 
@@ -29,16 +27,17 @@ struct LaunchItemsView: View {
                 try? await Task.sleep(for: .seconds(5))
             }
         }
-        .confirmationDialog(confirmationTitle, isPresented: Binding(get: { pending != nil },
-                                                                     set: { if !$0 { pending = nil } })) {
-            if let pending {
-                Button(pending.enable ? "Enable" : "Disable", role: pending.enable ? nil : .destructive) {
-                    apply(pending.row, pending.enable)
+        .confirmationDialog(confirmationTitle, isPresented: Binding(get: { model.pendingChange != nil },
+                                                                     set: { if !$0 { model.cancelChange() } })) {
+            // The change is captured here: dismissing the dialog clears the model's copy.
+            if let change = model.pendingChange {
+                Button(change.enable ? "Enable" : "Disable", role: change.enable ? nil : .destructive) {
+                    apply(change)
                 }
             }
-            Button("Cancel", role: .cancel) { pending = nil }
+            Button("Cancel", role: .cancel) { model.cancelChange() }
         } message: {
-            Text(pending?.enable == true
+            Text(model.pendingChange?.enable == true
                  ? "It starts now and every time you log in."
                  : "It stops now and won’t start when you log in. You can turn it back on here.")
         }
@@ -50,15 +49,14 @@ struct LaunchItemsView: View {
     }
 
     private var confirmationTitle: String {
-        guard let pending else { return "" }
-        return "\(pending.enable ? "Enable" : "Disable") “\(pending.row.item.label)”?"
+        guard let change = model.pendingChange else { return "" }
+        return "\(change.enable ? "Enable" : "Disable") “\(change.row.item.label)”?"
     }
 
-    private func apply(_ row: LaunchRow, _ enable: Bool) {
-        pending = nil
+    private func apply(_ change: LaunchItemsModel.PendingChange) {
         busy = true
         Task {
-            error = await model.setEnabled(row, enable)
+            error = await model.confirm(change)
             busy = false
         }
     }
@@ -93,7 +91,7 @@ struct LaunchItemsView: View {
                             .foregroundStyle(.orange)
                             .help(problem)
                     } else {
-                        Toggle("", isOn: Binding(get: { row.enabled }, set: { pending = (row, $0) }))
+                        Toggle("", isOn: Binding(get: { row.enabled }, set: { model.requestChange(row, enable: $0) }))
                             .toggleStyle(.checkbox)
                             .labelsHidden()
                             .disabled(busy)

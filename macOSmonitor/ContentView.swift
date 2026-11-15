@@ -16,7 +16,7 @@ struct ContentView: View {
     @State private var surface: Surface? = .summary
     /// The metric page Performance reopens: the last one viewed, CPU at first.
     @State private var lastMetric: Surface = .cpu
-    @AppStorage("themeID") private var themeID: String = Theme.system.id
+    @AppStorage(Theme.storageKey) private var themeID: String = Theme.system.id
     @AppStorage(Bloom.storageKey) private var bloomLevel = Bloom.defaultLevel
     @AppStorage(SaturationLevel.storageKey) private var saturationLevel = SaturationLevel.defaultLevel
     @State private var showsColours = false

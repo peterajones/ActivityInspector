@@ -45,11 +45,11 @@ struct MemoryCard: View {
             }
 
             HStack {
-                Text("Available \(model.vitals?.availableMemoryText ?? "—")")
-                Spacer()
-                Text("Cached \(model.vitals?.cachedMemoryText ?? "—")")
-                Spacer()
-                Text("Swap \(model.vitals?.swapText ?? "—")")
+                let footer = Self.footer(model.vitals)
+                ForEach(Array(footer.enumerated()), id: \.offset) { index, text in
+                    if index > 0 { Spacer() }
+                    Text(text)
+                }
             }
             .font(.caption)
             .monospacedDigit()
@@ -62,9 +62,18 @@ struct MemoryCard: View {
     /// Zoomed to the last minute's band, at least 1 GB tall, like the Memory panel, so a
     /// change of a few hundred megabytes shows instead of a flat line near the top.
     private var graphRange: ClosedRange<Double> {
-        MetricScale.zoomed(model.history.memoryUsed.values,
-                           ceiling: Double(model.vitals?.totalMemoryBytes ?? 1),
-                           minimumSpan: 1_073_741_824)
+        Self.graphRange(model.history, totalBytes: model.vitals?.totalMemoryBytes)
+    }
+
+    nonisolated static func graphRange(_ history: VitalsHistory, totalBytes: UInt64?) -> ClosedRange<Double> {
+        MetricScale.zoomed(history.memoryUsed.values, ceiling: Double(totalBytes ?? 1), minimumSpan: 1_073_741_824)
+    }
+
+    /// "Available 16.0 GB", "Cached 3.5 GB", "Swap 0.5 / 2.0 GB", with dashes until read.
+    nonisolated static func footer(_ vitals: SystemVitals?) -> [String] {
+        ["Available \(vitals?.availableMemoryText ?? "—")",
+         "Cached \(vitals?.cachedMemoryText ?? "—")",
+         "Swap \(vitals?.swapText ?? "—")"]
     }
 
     private func rangeLabel(_ bytes: Double) -> some View {

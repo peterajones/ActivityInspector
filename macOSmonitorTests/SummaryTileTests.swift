@@ -101,3 +101,31 @@ struct SummaryTileTests {
         #expect(SummaryTile.thermal(nil, cpuCelsius: nil).value == "—")
     }
 }
+
+/// Which tiles the Summary's bottom row shows, and which open a panel.
+struct SummaryStatRowTests {
+    @Test func aLaptopWithSensorsShowsAllFourAndThermalOpensItsPanel() {
+        #expect(SummaryView.statTiles(hasBattery: true, hasThermalSensors: true)
+                == [.network, .disk, .battery, .thermal(opensPanel: true)])
+    }
+
+    /// A desktop Mac has no battery: three tiles, not a gap (M9's rule).
+    @Test func noBatteryMeansNoBatteryTile() {
+        #expect(SummaryView.statTiles(hasBattery: false, hasThermalSensors: true)
+                == [.network, .disk, .thermal(opensPanel: true)])
+    }
+
+    /// Without readable sensors there is no Thermal panel to open, but the pressure tile stays.
+    @Test func withoutSensorsTheThermalTileStaysButOpensNothing() {
+        #expect(SummaryView.statTiles(hasBattery: true, hasThermalSensors: false)
+                == [.network, .disk, .battery, .thermal(opensPanel: false)])
+    }
+
+    @Test func eachTileOpensItsOwnPanel() {
+        #expect(SummaryStatTile.network.surface == .network)
+        #expect(SummaryStatTile.disk.surface == .disk)
+        #expect(SummaryStatTile.battery.surface == .battery)
+        #expect(SummaryStatTile.thermal(opensPanel: true).surface == .thermal)
+        #expect(SummaryStatTile.thermal(opensPanel: false).surface == nil)
+    }
+}

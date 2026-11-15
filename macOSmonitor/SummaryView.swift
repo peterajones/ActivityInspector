@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// One tile of the Summary's bottom row.
+enum SummaryStatTile: Hashable, Sendable {
+    case network, disk, battery
+    case thermal(opensPanel: Bool)
+
+    /// The panel a click opens; nil when there's none.
+    var surface: Surface? {
+        switch self {
+        case .network: .network
+        case .disk: .disk
+        case .battery: .battery
+        case .thermal(let opensPanel): opensPanel ? .thermal : nil
+        }
+    }
+}
+
 /// The Summary dashboard: the app's landing surface.
 ///
 /// Composes cards from data already sampled — it owns no provider of its own.
@@ -26,6 +42,12 @@ struct SummaryView: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(theme.panelBackground)
+    }
+
+    /// Network and Disk always; Battery only on a Mac with one (so a desktop shows three tiles,
+    /// not a gap, M9's rule); Thermal always, opening its panel only when sensors are readable.
+    nonisolated static func statTiles(hasBattery: Bool, hasThermalSensors: Bool) -> [SummaryStatTile] {
+        [.network, .disk] + (hasBattery ? [.battery] : []) + [.thermal(opensPanel: hasThermalSensors)]
     }
 
     private var topRow: some View {
@@ -82,43 +104,39 @@ struct SummaryView: View {
 
     private var statRow: some View {
         HStack(spacing: 12) {
-            Button { surface = .network } label: {
-                SummaryTileCard(title: "Network", systemImage: "network", metric: .network,
-                                tile: .network(vitalsModel.vitals,
-                                               inHistory: vitalsModel.history.networkIn,
-                                               outHistory: vitalsModel.history.networkOut))
-            }
-            .buttonStyle(.plain)
-            Button { surface = .disk } label: {
-                SummaryTileCard(title: "Disk", systemImage: "internaldrive", metric: .disk,
-                                tile: .disk(vitalsModel.vitals,
-                                            readHistory: vitalsModel.history.diskRead,
-                                            writeHistory: vitalsModel.history.diskWrite))
-            }
-            .buttonStyle(.plain)
-            // Omitted entirely when there is no battery (M9's rule), so a desktop
-            // Mac shows three tiles rather than a gap.
-            if let battery = vitalsModel.vitals?.battery {
-                Button { surface = .battery } label: {
-                    SummaryTileCard(title: "Battery", systemImage: "battery.75percent", metric: .battery,
-                                    tile: .battery(battery))
+            ForEach(Self.statTiles(hasBattery: vitalsModel.vitals?.battery != nil,
+                                   hasThermalSensors: vitalsModel.thermal != nil), id: \.self) { tile in
+                if let target = tile.surface {
+                    Button { surface = target } label: { card(for: tile) }
+                        .buttonStyle(.plain)
+                } else {
+                    card(for: tile)
                 }
-                .buttonStyle(.plain)
             }
-            thermalTile
         }
         .fixedSize(horizontal: false, vertical: true)   // every tile as tall as the tallest
     }
 
-    /// Opens the Thermal panel only when it exists (it needs readable temperature sensors).
-    @ViewBuilder private var thermalTile: some View {
-        let card = SummaryTileCard(title: "Thermal", systemImage: "thermometer.medium", metric: .thermal,
-                                   tile: .thermal(vitalsModel.vitals, cpuCelsius: vitalsModel.thermal?.cpuDieMax))
-        if vitalsModel.thermal != nil {
-            Button { surface = .thermal } label: { card }
-                .buttonStyle(.plain)
-        } else {
-            card
+    @ViewBuilder private func card(for tile: SummaryStatTile) -> some View {
+        switch tile {
+        case .network:
+            SummaryTileCard(title: "Network", systemImage: "network", metric: .network,
+                            tile: .network(vitalsModel.vitals,
+                                           inHistory: vitalsModel.history.networkIn,
+                                           outHistory: vitalsModel.history.networkOut))
+        case .disk:
+            SummaryTileCard(title: "Disk", systemImage: "internaldrive", metric: .disk,
+                            tile: .disk(vitalsModel.vitals,
+                                        readHistory: vitalsModel.history.diskRead,
+                                        writeHistory: vitalsModel.history.diskWrite))
+        case .battery:
+            if let battery = vitalsModel.vitals?.battery {
+                SummaryTileCard(title: "Battery", systemImage: "battery.75percent", metric: .battery,
+                                tile: .battery(battery))
+            }
+        case .thermal:
+            SummaryTileCard(title: "Thermal", systemImage: "thermometer.medium", metric: .thermal,
+                            tile: .thermal(vitalsModel.vitals, cpuCelsius: vitalsModel.thermal?.cpuDieMax))
         }
     }
 }

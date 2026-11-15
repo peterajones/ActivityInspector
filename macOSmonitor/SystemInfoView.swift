@@ -162,15 +162,20 @@ private struct ProfilerNodeRow: View {
 
 /// A value that identifies this Mac or a device: dots until clicked, so a screenshot of the app
 /// doesn't give away a serial number or address.
-private struct MaskedValue: View {
+struct MaskedValue: View {
     let text: String
     @State private var revealed = false
     @Environment(\.theme) private var theme
 
+    /// Always eight dots when hidden, so not even a value's length shows.
+    nonisolated static func shown(_ text: String, revealed: Bool) -> String {
+        revealed ? text : "••••••••"
+    }
+
     var body: some View {
         Button { revealed.toggle() } label: {
             HStack(spacing: 6) {
-                Text(revealed ? text : "••••••••")
+                Text(Self.shown(text, revealed: revealed))
                     .foregroundStyle(theme.secondaryText)
                 Image(systemName: revealed ? "eye.slash" : "eye")
                     .font(.caption)

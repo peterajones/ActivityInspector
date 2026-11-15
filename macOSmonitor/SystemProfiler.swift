@@ -134,7 +134,11 @@ struct ProfilerLabels: Sendable {
 
     /// Every reporter's table, merged, in the first of `languages` it has (English otherwise).
     nonisolated static func system(languages: [String]) -> ProfilerLabels {
-        let root = URL(fileURLWithPath: "/System/Library/SystemProfiler")
+        load(root: URL(fileURLWithPath: "/System/Library/SystemProfiler"), languages: languages)
+    }
+
+    /// Every `.spreporter` bundle's table under `root`, merged.
+    nonisolated static func load(root: URL, languages: [String]) -> ProfilerLabels {
         let reporters = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
         var merged: [String: String] = [:]
         for reporter in reporters where reporter.pathExtension == "spreporter" {
