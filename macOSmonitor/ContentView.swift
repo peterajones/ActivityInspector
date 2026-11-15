@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var showsColours = false
     /// What System Info has read, kept here so returning to the page doesn't read it all again.
     @State private var systemInfoModel = SystemInfoModel()
+    @State private var installedAppsModel = InstalledAppsModel()
     @State private var startupModel = LaunchItemsModel(kind: .startup)
     @State private var servicesModel = LaunchItemsModel(kind: .services)
     /// Whether this window can be seen; its graphs stop animating while it can't.
@@ -108,6 +109,8 @@ struct ContentView: View {
                               sortOrder: $portsSortOrder)
                 case .systemInfo:
                     SystemInfoView(model: systemInfoModel)
+                case .installedApps:
+                    InstalledAppsView(model: installedAppsModel)
                 case .startupApps:
                     LaunchItemsView(model: startupModel)
                 case .services:

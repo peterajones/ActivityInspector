@@ -28,7 +28,7 @@ enum PerformanceMeter {
         case .thermal: return ThermalPanel.meterFraction(thermal?.headline)
         case .energy: return EnergyPanel.meterFraction(power?.systemWatts, history: powerHistory)
         case .battery: return Double(vitals.battery?.chargePercent ?? 0) / 100
-        case .summary, .processes, .ports, .systemInfo, .startupApps, .services: return 0
+        case .summary, .processes, .ports, .systemInfo, .installedApps, .startupApps, .services: return 0
         }
     }
 

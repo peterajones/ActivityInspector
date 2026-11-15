@@ -22,6 +22,11 @@ final class ProcessIconCache {
     /// The icon of the app bundle `path` lives in; nil for a tool outside any app.
     func icon(forExecutable path: String?) -> NSImage? {
         guard let bundle = ProcessIcon.bundlePath(forExecutable: path) else { return nil }
+        return icon(forBundle: bundle)
+    }
+
+    /// An app bundle's own icon.
+    func icon(forBundle bundle: String) -> NSImage {
         if let icon = icons[bundle] { return icon }
         let icon = NSWorkspace.shared.icon(forFile: bundle)
         icons[bundle] = icon

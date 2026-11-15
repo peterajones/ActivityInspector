@@ -5,7 +5,7 @@ table with an inspector, a Ports table, and a Performance section. A menu-bar it
 optional root helper for other users' processes. Five themes; meters are segmented LED bars.
 
 **Navigation (2026-11-14):** the sidebar lists `SidebarItem`s (Summary, Performance, Processes,
-Ports, System Info, Startup Apps, Services). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
+Ports, System Info, Installed Apps, Startup Apps, Services). Performance shows a column of metrics (`PerformanceView`: CPU, GPU, Memory, Network,
 Disk, Thermal, Energy, Battery, each where this Mac reports it) beside the chosen metric's
 panel. `surface` (a `Surface`) is still the one source of truth for which page shows; every
 metric surface maps to the Performance sidebar item, and choosing Performance reopens the last
@@ -19,6 +19,15 @@ masked until clicked. `SystemInfoModel` (owned by `ContentView`) preloads the fa
 ones drop out of the list, and reads the slow ones (Wi-Fi ~20 s, Fonts ~12 s) only when chosen.
 The runner reads the tool's output to end of file on a GCD thread; it never calls
 `waitUntilExit()`.
+
+**Installed Apps** (`InstalledApps.swift`, `InstalledAppsModel`, `InstalledAppsView`) reads
+`system_profiler -json SPApplicationsDataType` once, when first shown (~2 s): kind from `arch_kind`,
+origin from `obtained_from`, publisher from the `signed_by` leaf via `CodePublisher` (App Store apps
+show "—": their certificate is Apple's and doesn't name the developer). By default only apps in an
+Applications folder show (`InstalledApp.isInstalled`); a checkbox adds system helpers and build
+products. **The tool skips symlinks, and Safari in /Applications is one** (into the Cryptex volume), so
+`InstalledAppLinks` adds links into /System from their bundles. Sizes are measured afterwards, one
+bundle at a time on a GCD thread, installed apps first.
 
 **Startup Apps and Services** (`LaunchItems.swift`, `LaunchItemsModel`, one `LaunchItemsView`) read
 launchd's property lists (`~/Library/LaunchAgents` + `/Library/LaunchAgents`; `/Library/LaunchDaemons` +

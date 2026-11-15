@@ -19,9 +19,9 @@ struct PerformanceNavigationTests {
     }
 
     @Test func sidebarListsFourItemsInOrder() {
-        #expect(SidebarItem.allCases == [.summary, .performance, .processes, .ports, .systemInfo, .startupApps, .services])
+        #expect(SidebarItem.allCases == [.summary, .performance, .processes, .ports, .systemInfo, .installedApps, .startupApps, .services])
         #expect(SidebarItem.allCases.map(\.title) == ["Summary", "Performance", "Processes", "Ports", "System Info",
-                                                      "Startup Apps", "Services"])
+                                                      "Installed Apps", "Startup Apps", "Services"])
     }
 
     @Test func performanceReopensTheLastMetricViewed() {
