@@ -18,7 +18,9 @@ types under Hardware, Network and Software, Apple's own labels from each reporte
 masked until clicked. `SystemInfoModel` (owned by `ContentView`) preloads the fast types so empty
 ones drop out of the list, and reads the slow ones (Wi-Fi ~20 s, Fonts ~12 s) only when chosen.
 The runner reads the tool's output to end of file on a GCD thread; it never calls
-`waitUntilExit()`.
+`waitUntilExit()`. Copy (one item) and Export Report… (every item, slow ones read first by
+`loadAll`) write plain text via `SystemInfoReport`, leaving identifying values out unless "Include
+identifying details" is on. `load` keeps each read under way, so asking again waits for it.
 
 **Installed Apps** (`InstalledApps.swift`, `InstalledAppsModel`, `InstalledAppsView`) reads
 `system_profiler -json SPApplicationsDataType` once, when first shown (~2 s): kind from `arch_kind`,

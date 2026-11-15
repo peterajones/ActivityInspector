@@ -15,6 +15,8 @@ enum SystemInfoState: Equatable, Sendable {
 final class SystemInfoModel {
     private(set) var states: [String: SystemInfoState] = [:]
     var selection = "SPHardwareDataType"
+    /// Copy and Export Report… leave identifying values out unless this is on.
+    var includesIdentifying = false
 
     private let runner: any SystemProfilerRunning
     private var labels: ProfilerLabels?
@@ -26,6 +28,28 @@ final class SystemInfoModel {
     }
 
     func state(of id: String) -> SystemInfoState? { states[id] }
+
+    /// Set while Export Report… reads every type; nil otherwise.
+    private(set) var loadAllProgress: SystemInfoLoadAllProgress?
+
+    /// Reads every type not yet read, slow ones included, four at a time, counting as it goes.
+    func loadAll() async {
+        let ids = SystemInfoItem.catalog.map(\.id)
+        loadAllProgress = SystemInfoLoadAllProgress(done: 0, total: ids.count)
+        var done = 0
+        var queue = ids.makeIterator()
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<4 {
+                if let id = queue.next() { group.addTask { await self.load(id) } }
+            }
+            while await group.next() != nil {
+                done += 1
+                loadAllProgress = SystemInfoLoadAllProgress(done: done, total: ids.count)
+                if let id = queue.next() { group.addTask { await self.load(id) } }
+            }
+        }
+        loadAllProgress = nil
+    }
 
     /// The category's items, less any this Mac has nothing for.
     func visibleItems(in category: SystemInfoCategory) -> [SystemInfoItem] {
@@ -47,9 +71,24 @@ final class SystemInfoModel {
         }
     }
 
-    /// Reads `id` unless it's already read or being read; `force` reads it again.
+    /// Reads under way, so asking again waits for the same read instead of skipping it.
+    private var reads: [String: Task<Void, Never>] = [:]
+
+    /// Reads `id` unless it's already read; if it's being read, waits for that. `force` reads
+    /// it again.
     func load(_ id: String, force: Bool = false) async {
+        if !force, let reading = reads[id] {
+            await reading.value
+            return
+        }
         if !force, states[id] != nil { return }
+        let read = Task { await self.read(id) }
+        reads[id] = read
+        await read.value
+        if reads[id] == read { reads[id] = nil }
+    }
+
+    private func read(_ id: String) async {
         states[id] = .loading
         let labels = await currentLabels()
         guard let data = await runner.run(id) else {

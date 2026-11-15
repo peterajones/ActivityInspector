@@ -1,18 +1,27 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 /// System Info: a column of `system_profiler`'s data types under Hardware, Network and
 /// Software, and the chosen one as a tree of Apple's labels and values. No graphs.
 struct SystemInfoView: View {
-    let model: SystemInfoModel
+    @Bindable var model: SystemInfoModel
     @Environment(\.theme) private var theme
+    /// Briefly true after Copy, to say it worked.
+    @State private var copied = false
+    @State private var exportError: String?
 
     static var columnWidth: CGFloat { 250 }
 
     var body: some View {
         HStack(spacing: 0) {
-            column
-                .frame(width: Self.columnWidth)
-                .background(theme.panelBackground)
+            VStack(spacing: 0) {
+                column
+                Rectangle().fill(theme.secondaryText.opacity(0.25)).frame(height: 1)
+                exportFooter
+            }
+            .frame(width: Self.columnWidth)
+            .background(theme.panelBackground)
             Rectangle().fill(theme.secondaryText.opacity(0.25)).frame(width: 1)
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -20,6 +29,61 @@ struct SystemInfoView: View {
         }
         .task { await model.preload() }
         .task(id: model.selection) { await model.load(model.selection) }
+        .alert("Couldn’t save the report", isPresented: Binding(get: { exportError != nil },
+                                                                set: { if !$0 { exportError = nil } })) {
+            Button("OK", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
+        }
+    }
+
+    /// Export Report…, or how far reading every type has got.
+    @ViewBuilder private var exportFooter: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let progress = model.loadAllProgress {
+                ProgressView(value: progress.fraction)
+                Text("Reading \(progress.done) of \(progress.total)…")
+                    .font(.caption)
+                    .foregroundStyle(theme.secondaryText)
+            } else {
+                Button {
+                    Task { await exportReport() }
+                } label: {
+                    Label("Export Report…", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .help("Save every item as a text file. Wi-Fi and Fonts take a few seconds to read.")
+            }
+        }
+        .padding(12)
+    }
+
+    /// Reads every type, then asks where to save the text.
+    private func exportReport() async {
+        await model.loadAll()
+        let report = SystemInfoReport.report(states: model.states, includesIdentifying: model.includesIdentifying,
+                                             generated: .now)
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "System Report.txt"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try report.write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    /// Puts the item's text on the clipboard.
+    private func copy(_ item: SystemInfoItem, _ nodes: [ProfilerNode]) {
+        let text = SystemInfoReport.text(for: item, nodes: nodes, includesIdentifying: model.includesIdentifying)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        copied = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            copied = false
+        }
     }
 
     private var column: some View {
@@ -60,6 +124,15 @@ struct SystemInfoView: View {
                 Image(systemName: item.systemImage).font(.title2)
                 Text(item.title).font(.title2.weight(.semibold))
                 Spacer()
+                Toggle("Include identifying details", isOn: $model.includesIdentifying)
+                    .toggleStyle(.checkbox)
+                    .help("Serial numbers, hardware IDs, addresses and your user name, in Copy and Export Report…")
+                Button {
+                    if case .loaded(let nodes) = model.state(of: item.id) { copy(item, nodes) }
+                } label: {
+                    Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                }
+                .disabled(!Self.hasContent(model.state(of: item.id)))
                 Button {
                     Task { await model.load(item.id, force: true) }
                 } label: {
@@ -99,6 +172,10 @@ struct SystemInfoView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+
+    nonisolated static func hasContent(_ state: SystemInfoState?) -> Bool {
+        if case .loaded(let nodes) = state { !nodes.isEmpty } else { false }
     }
 
     private func message(_ text: String) -> some View {
