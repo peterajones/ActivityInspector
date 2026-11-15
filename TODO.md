@@ -3,9 +3,6 @@
 _Single source of truth for unfinished work in this project. Tick an item when it is done; the review harness records it and removes the line._
 
 ## Next
-- [x] Decide whether to add a Users page: accounts and who is logged in: dropped (Peter, 2026-11-15) (from: candidates list, 2026-11-14)
-- [x] Decide whether to add a System Info export: copy or save a report of one item or all of them (deferred when System Info was built): adding it now (Peter, 2026-11-15) (from: candidates list, 2026-11-14)
-- [x] Build the System Info export: Copy for the selected item and Export Report… for all of them, as indented text, identifying values left out unless asked for (from: Peter, 2026-11-15)
 
 ## Later
 - [ ] Decide whether to add a Disk Space page: what is using the disk, by folder; scanning is slow, so it needs care; revisit after the App Store edition ships (moved to Later by Peter, 2026-11-15) (from: candidates list, 2026-11-14)
