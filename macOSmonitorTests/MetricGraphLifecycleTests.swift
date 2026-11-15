@@ -94,15 +94,23 @@ struct MetricGraphLifecycleTests {
         let window = makeWindow(hosting: hosting)
         defer { window.close() }
 
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(box.visible == true)
+        #expect(try await waitUntil { box.visible == true }, "never reported visible")
 
         window.orderOut(nil)
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(box.visible == false)
+        #expect(try await waitUntil { box.visible == false }, "never reported hidden")
 
         window.orderFrontRegardless()
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(box.visible == true)
+        #expect(try await waitUntil { box.visible == true }, "never reported visible again")
+    }
+
+    /// AppKit reports occlusion changes asynchronously, and in a full parallel run that can take
+    /// longer than a fixed 300 ms (it failed once that way): check every 20 ms, for up to 3 s.
+    private func waitUntil(timeout: Duration = .seconds(3), _ condition: () -> Bool) async throws -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while !condition() {
+            if ContinuousClock.now >= deadline { return false }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        return true
     }
 }
