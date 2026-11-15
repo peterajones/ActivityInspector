@@ -3,7 +3,6 @@
 _Single source of truth for unfinished work in this project. Tick an item when it is done; the review harness records it and removes the line._
 
 ## Next
-- [x] App icon: sketch concepts with Peter (a simple, bold shape that still reads in one colour), then build the layered icon in Icon Composer so macOS can render its default, dark, clear and tinted styles; needed for the App Store submission (from: Peter, 2026-11-14)
 - [ ] App Store edition: list processes with sysctl(KERN_PROC_ALL), since proc_listpids returns nothing in the App Sandbox (from: sandbox probe, 2026-11-13)
 
 ## Later
