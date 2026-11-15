@@ -25,6 +25,39 @@ struct ProcInfo: ProcInfoProviding {
     /// All PIDs on the system. Enumeration is unprivileged, so this returns
     /// every process regardless of owner.
     func listPIDs() -> [pid_t] {
+        Self.listPIDs(primary: Self.procListPIDs, fallback: Self.sysctlPIDs)
+    }
+
+    /// The primary list, or the fallback when it's empty: in the App Sandbox `proc_listpids`
+    /// returns nothing while `sysctl(KERN_PROC_ALL)` still works (probed 2026-11-13).
+    static func listPIDs(primary: () -> [pid_t], fallback: () -> [pid_t]) -> [pid_t] {
+        let pids = primary()
+        return pids.isEmpty ? fallback() : pids
+    }
+
+    /// Every PID from `sysctl(KERN_PROC_ALL)`, kernel_task (0) left out as `proc_listpids` does.
+    static func sysctlPIDs() -> [pid_t] {
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+        let stride = MemoryLayout<kinfo_proc>.stride
+        // Processes can start between the size query and the read: allow slack, retry on ENOMEM.
+        for _ in 0..<3 {
+            var size = 0
+            guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return [] }
+            size += size / 8
+            var procs = [kinfo_proc](repeating: kinfo_proc(), count: size / stride)
+            size = procs.count * stride
+            let status = procs.withUnsafeMutableBytes {
+                sysctl(&mib, UInt32(mib.count), $0.baseAddress, &size, nil, 0)
+            }
+            if status == 0 {
+                return procs.prefix(size / stride).map(\.kp_proc.p_pid).filter { $0 != 0 }
+            }
+            guard errno == ENOMEM else { return [] }
+        }
+        return []
+    }
+
+    static func procListPIDs() -> [pid_t] {
         // First call with a nil buffer asks the kernel how many bytes we need.
         let needed = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
         guard needed > 0 else { return [] }

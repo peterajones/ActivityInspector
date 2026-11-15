@@ -49,5 +49,31 @@ struct ProcInfoTests {
         let numbered = sut.listPIDs().filter { sut.name(pid: $0).hasPrefix("(pid ") }
         #expect(numbered.allSatisfy { sut.path(pid: $0) == nil }, "\(numbered.prefix(5))")
     }
+
+    /// The App Sandbox makes proc_listpids return nothing; only then does sysctl take over.
+    @Test func listFallsBackOnlyWhenThePrimaryListIsEmpty() {
+        var asked = 0
+        let fallback: () -> [pid_t] = { asked += 1; return [7, 8] }
+        #expect(ProcInfo.listPIDs(primary: { [1, 2, 3] }, fallback: fallback) == [1, 2, 3])
+        #expect(asked == 0)
+        #expect(ProcInfo.listPIDs(primary: { [] }, fallback: fallback) == [7, 8])
+        #expect(asked == 1)
+    }
+
+    @Test func sysctlListIncludesOurOwnProcessAndLaunchd() {
+        let pids = ProcInfo.sysctlPIDs()
+        #expect(pids.contains(getpid()))
+        #expect(pids.contains(1))
+        #expect(!pids.contains(0))       // kernel_task: proc_listpids' list leaves it out too
+    }
+
+    /// Both lists see the same processes, give or take the ones starting and exiting between reads.
+    @Test func sysctlListMatchesProcListPIDs() {
+        let fromProc = Set(ProcInfo.procListPIDs())
+        let fromSysctl = Set(ProcInfo.sysctlPIDs())
+        let differing = fromProc.symmetricDifference(fromSysctl).count
+        #expect(fromProc.count > 50)
+        #expect(differing * 20 < fromProc.count, "\(differing) of \(fromProc.count) differ")
+    }
 }
 

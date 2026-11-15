@@ -3,7 +3,7 @@
 _Single source of truth for unfinished work in this project. Tick an item when it is done; the review harness records it and removes the line._
 
 ## Next
-- [ ] App Store edition: list processes with sysctl(KERN_PROC_ALL), since proc_listpids returns nothing in the App Sandbox (from: sandbox probe, 2026-11-13)
+- [x] App Store edition: list processes with sysctl(KERN_PROC_ALL), since proc_listpids returns nothing in the App Sandbox (from: sandbox probe, 2026-11-13)
 
 ## Later
 - [ ] App Store edition: add a sandboxed build of the app (Peter sets up the target/configuration in Xcode) with an APP_STORE compile flag that compiles out every private-API reader (SMC, IOReport, HID thermal, NetworkStatistics) and the helper, and hides Quit/Force Quit, Ports and Energy; see CLAUDE.md "Distribution" (from: Peter, 2026-11-13)
