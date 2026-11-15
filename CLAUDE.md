@@ -106,8 +106,8 @@ which inspired the design). The split and the licensing are still to decide (TOD
   every page lost the one thing that made it worth opening (quitting, switching startup items,
   temperatures, Ports, the helper). Its code was discarded, not kept. Other Mac tools that sell on the
   App Store (iStat Menus, CleanMyMac) keep a reduced App Store version whose remaining features still
-  work in the sandbox. **If the App Store comes back, it's as a purpose-built free version** (TODO
-  Later), not this app with features removed. The probe results below are kept for that.
+  work in the sandbox. **No App Store version is planned** (Peter, 2026-11-15: a system utility's job is
+  to reach outside the sandbox). The probe results below are kept in case that ever changes.
 - What the App Sandbox allows, probed 2026-11-13 with sandboxed test binaries on macOS 27.2:
   - **Works:** listing processes via `sysctl(KERN_PROC_ALL)` (`proc_listpids` and `proc_listallpids`
     return **0** in the sandbox); task info, names, paths, owners and arguments for the user's own
