@@ -98,6 +98,12 @@ Each private read goes behind its own provider protocol and must return nil — 
 panel — when the interface is missing or changes shape, never crash. Re-run the
 real-hardware tests after each macOS update.
 
+**Public name: Activity Inspector (chosen 2026-11-15).** "Mac" and "macOS" are Apple trademarks and can't
+be in the product's name or domain, so "macOSmonitor" stays the internal name (code, repo, bundle ID)
+and the public face becomes Activity Inspector: Apple-native in feel, like Activity Monitor. Checked on
+2026-11-15: no product or trademark by that name found, all domains free. Peter is doing the trademark
+search and registering activityinspector.com; the public rename waits for that (TODO).
+
 **Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
 Developer ID and notarized, from his own site, with a free tier and paid features on top (like TMOG,
 which inspired the design). The split and the licensing are still to decide (TODO).
