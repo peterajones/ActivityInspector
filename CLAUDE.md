@@ -114,6 +114,15 @@ He chose not to register the mark (C$500 in Canada).
 **Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
 Developer ID and notarized, from his own site. **Pricing is not decided** (TODO): there is no agreed
 free/paid split. Peter's stated aim (2026-11-13) is "really cheap or free", to reinforce his presence as a developer.
+- **Release build: `scripts/release.sh`** (first run 2026-11-16, accepted). Archives Release, exports with
+  Developer ID (`scripts/ExportOptions.plist`), checks both signatures (Developer ID, hardened runtime,
+  timestamp, and each side's code requirement), notarizes and staples the app, then builds, signs,
+  notarizes and staples `build/release/ActivityInspector-<version>.dmg` and runs `spctl`. Needs the
+  "Developer ID Application: Peter A. Jones (8QQC2WMRHS)" certificate and the notarytool keychain profile
+  `ActivityInspector`. **The helper target has `SKIP_INSTALL = YES`:** without it the archive also holds a
+  loose `usr/local/bin` copy of the helper, becomes a "generic" archive, and export fails with
+  `expected one {} but found developer-id`. Xcode showed Peter as "Admin" on his Individual team, which
+  refused the certificate; he created it on developer.apple.com instead.
 - **The App Store edition was dropped (2026-11-15).** The plan from 2026-11-13 was a sandboxed,
   public-API build beside the full one. Peter reviewed it built and judged it "not a sellable product":
   every page lost the one thing that made it worth opening (quitting, switching startup items,
@@ -186,6 +195,14 @@ over the XPC Mach service `ca.peter-jones.ActivityInspector.helper`.
   the Power (W) column; the helper's `taskSamples` now runs `ProcInfo.sample`. The wire format is
   `[resident, cpu, energy?]`, and a 2-value payload from an older helper still decodes.
 - Check it's running: `launchctl print system/ca.peter-jones.ActivityInspector.helper`.
+- **A helper registration belongs to the copy of the app that made it (2026-11-16).** The Debug build
+  and the Developer ID release share the bundle ID, and macOS's background-item records (`sfltool
+  dumpbtm`, kept per section: your user, root, and -2) ended up pointing at different copies. launchd
+  then failed every spawn with `EX_CONFIG` (78): first "Unable to get updated LWCR … No such process"
+  (the registering Debug build had been deleted), then "copy_bundle_path … Invalid or missing Program".
+  The app saw status "enabled", so Install Helper did nothing. Recovery: only one copy installed, then
+  `sudo sfltool resetbtm` and a restart, then Install Helper. Read the logs with `/usr/bin/log`: in zsh,
+  plain `log` is a shell builtin and prints nothing useful. Planned fix: Debug gets its own bundle ID (TODO).
 
 **Samplers are `actor`s**, take an injected `now: () -> UInt64` clock so rate arithmetic is
 testable, and guard every counter delta (counters wrap and devices reset; unsigned subtraction
