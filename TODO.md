@@ -3,7 +3,7 @@
 _Single source of truth for unfinished work in this project. Tick an item when it is done; the review harness records it and removes the line._
 
 ## Next
-- [ ] Peter: register activityinspector.com (available at $19.99 on 2026-11-15), and activityinspector.app to protect it (from: Peter, 2026-11-15)
+- [x] Peter: register activityinspector.com (available at $19.99 on 2026-11-15), and activityinspector.app to protect it (from: Peter, 2026-11-15)
 - [ ] Peter: trademark search for "Activity Inspector" in software: USPTO, CIPO, and Apple's published trademark list (it sits close to Apple's Activity Monitor) (from: naming, 2026-11-15)
 - [ ] Decide the free/paid split for the Full edition (TMOG-style: a capable free tier, paid features on top) and how licences unlock paid features in the one build (from: Peter, 2026-11-15)
 
