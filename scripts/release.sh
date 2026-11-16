@@ -27,6 +27,29 @@ HELPER_REQ='anchor apple generic and identifier "ActivityInspectorHelper" and ce
 step() { print -P "\n%B==> $1%b"; }
 fail() { print -u2 "release: $1"; exit 1; }
 
+# check_identity <app>: the app is the release, not the Dev build (ca.peter-jones.ActivityInspector.dev),
+# and carries exactly one launchd plist, labelled for the release's helper. The build phase
+# (scripts/helper-launchd-plist.sh) already guards Release settings; this checks what was shipped.
+check_identity() {
+    local app=$1 daemons="$1/Contents/Library/LaunchDaemons" pb=/usr/libexec/PlistBuddy
+    local plist="$daemons/ca.peter-jones.ActivityInspector.helper.plist"
+    [[ $($pb -c 'Print CFBundleIdentifier' "$app/Contents/Info.plist") == ca.peter-jones.ActivityInspector ]] \
+        || fail "the app's bundle ID is not ca.peter-jones.ActivityInspector"
+    [[ $(ls "$daemons") == ca.peter-jones.ActivityInspector.helper.plist ]] \
+        || fail "Contents/Library/LaunchDaemons should hold only the release helper's plist: $(ls "$daemons" | tr '\n' ' ')"
+    [[ $($pb -c 'Print Label' "$plist") == ca.peter-jones.ActivityInspector.helper ]] \
+        || fail "the helper plist's Label is not ca.peter-jones.ActivityInspector.helper"
+    [[ $($pb -c 'Print AssociatedBundleIdentifiers:0' "$plist") == ca.peter-jones.ActivityInspector ]] \
+        || fail "the helper plist is not associated with ca.peter-jones.ActivityInspector"
+    # The Dev icon sits in the same synchronized folder; today only the named icon is compiled in,
+    # but nothing else would notice if an Xcode update started compiling every .icon.
+    local assets
+    assets=$(xcrun assetutil --info "$app/Contents/Resources/Assets.car") \
+        || fail "couldn't read the app's asset catalog"
+    [[ $assets != *ActivityInspectorDev* && $(ls "$app/Contents/Resources") != *ActivityInspectorDev* ]] \
+        || fail "the app contains the Dev icon (ActivityInspectorDev)"
+}
+
 step "Checking the signing certificate and notarization profile"
 security find-identity -v -p codesigning | grep -q "Developer ID Application: .*($TEAM)" \
     || fail "no Developer ID Application certificate for team $TEAM in the keychain"
@@ -62,6 +85,7 @@ for item in "$APP" "$HELPER"; do
 done
 codesign -v -R="$CLIENT_REQ" "$APP" || fail "the app fails the helper's client requirement"
 codesign -v -R="$HELPER_REQ" "$HELPER" || fail "the helper fails the app's requirement"
+check_identity "$APP"
 
 notarize() {   # notarize <file>: submits and waits; prints Apple's log when it's rejected
     local result id
@@ -95,5 +119,10 @@ step "Gatekeeper check"
 spctl --assess --type execute --verbose=2 "$APP"
 spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
 xcrun stapler validate "$DMG"
+
+# Remove the loose copies of the app; the DMG and the archive are the record. A Release-ID copy
+# that gets launched and asked to Install Helper registers the helper to itself, and when it's
+# deleted launchd can no longer start the helper (EX_CONFIG, 2026-11-16; see CLAUDE.md).
+rm -rf "$EXPORT" "$STAGE"
 
 print -P "\n%BDone:%b $DMG"

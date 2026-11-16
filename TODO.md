@@ -5,7 +5,7 @@ _Single source of truth for unfinished work in this project. Tick an item when i
 ## Next
 - [ ] Decide how the app is priced: free, cheap, or something else. Not decided yet; on 2026-11-13 Peter said "really cheap or free - the point is to reinforce my presence as a developer" (from: Peter, 2026-11-16)
 
-- [ ] Give Debug builds their own bundle ID (ca.peter-jones.ActivityInspector.debug) and helper label, Mach service and code requirements, so a Debug build and the release never share background-item records; needs a project.pbxproj change (from: helper spawn failure, 2026-11-16)
+- [x] Give Debug builds their own bundle ID (ca.peter-jones.ActivityInspector.dev) and helper label, Mach service and code requirements, so a Debug build and the release never share background-item records; needs a project.pbxproj change (from: helper spawn failure, 2026-11-16)
 
 ## Later
 - [ ] Decide whether to add a Disk Space page: what is using the disk, by folder; scanning is slow, so it needs care (moved to Later by Peter, 2026-11-15) (from: candidates list, 2026-11-14)

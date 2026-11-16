@@ -65,6 +65,17 @@ struct HelperRulesTests {
         #expect(!HelperConstants.clientRequirement(debug: true).contains(clause))
     }
 
+    /// Debug builds are a separate app (own bundle ID, own helper label) so they never share
+    /// macOS's background-item records with the release, which broke the helper on 2026-11-16.
+    @Test func eachConfigurationHasItsOwnNames() {
+        #expect(HelperConstants.appBundleID(debug: false) == "ca.peter-jones.ActivityInspector")
+        #expect(HelperConstants.appBundleID(debug: true) == "ca.peter-jones.ActivityInspector.dev")
+        #expect(HelperConstants.machServiceName(debug: false) == "ca.peter-jones.ActivityInspector.helper")
+        #expect(HelperConstants.machServiceName(debug: true) == "ca.peter-jones.ActivityInspector.dev.helper")
+        #expect(HelperConstants.clientRequirement(debug: false).contains(#"identifier "ca.peter-jones.ActivityInspector" and"#))
+        #expect(HelperConstants.clientRequirement(debug: true).contains(#"identifier "ca.peter-jones.ActivityInspector.dev" and"#))
+    }
+
     @Test func samplesRoundTripThroughTheWireFormat() throws {
         let sent: [pid_t: ProcTaskSample] = [88: ProcTaskSample(residentBytes: 12_345, cpuTimeNanos: 6_789)]
         let decoded = try #require(HelperWire.decodeSamples(HelperWire.encodeSamples(sent)))

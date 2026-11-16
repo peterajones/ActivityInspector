@@ -108,8 +108,19 @@ He chose not to register the mark (C$500 in Canada).
 - The app target's `PRODUCT_NAME` is "Activity Inspector", with a space (the .app, executable, app menu, Login
   Items), so `PRODUCT_MODULE_NAME = ActivityInspector` keeps the module name, and the tests' `TEST_HOST`
   points at "Activity Inspector.app". Text the user reads names the app through `AppName.display`.
-- `AppNameTests` checks the bundle's name and ID, the embedded helper, and that no app, helper or launchd
-  source still says the old name. The running process is `Activity Inspector`: `pgrep -x "Activity Inspector"`.
+- `AppNameTests` checks the bundle's name and ID, the embedded helper and its generated launchd plist, and
+  that no app or helper source still says the old name. The running process is `Activity Inspector` in both
+  configurations (see the next point before using `pgrep -x`).
+- **Debug builds are a separate app (2026-11-16):** bundle ID `ca.peter-jones.ActivityInspector.dev`, display
+  name "Activity Inspector Dev" (About/Hide/Quit), the DEV-ribbon icon (`ActivityInspectorDev.icon`), and
+  their own helper label `ca.peter-jones.ActivityInspector.dev.helper`. Release keeps the plain values. Set
+  per configuration in Build Settings, **never the General tab**, which can flatten both onto one value
+  (FB24809836); `scripts/helper-launchd-plist.sh` fails a Debug or Release build whose bundle ID, display
+  name, icon or `DEBUG` flag doesn't match its configuration. The menu-bar title stays "Activity Inspector" in Debug: a generated
+  Info.plist always takes `CFBundleName` from `PRODUCT_NAME`, which is the same in both (`TEST_HOST`).
+  **Both copies run as a process named `Activity Inspector`,** so `pgrep -x`, `pkill` and `killall` by name
+  hit both: tell them apart by path (`pgrep -fl "Products/Debug/Activity Inspector.app"`) or bundle ID.
+  Spec: `docs/superpowers/specs/2026-11-16-debug-bundle-id-design.md`.
 
 **Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
 Developer ID and notarized, from his own site. **Pricing is not decided** (TODO): there is no agreed
@@ -117,7 +128,9 @@ free/paid split. Peter's stated aim (2026-11-13) is "really cheap or free", to r
 - **Release build: `scripts/release.sh`** (first run 2026-11-16, accepted). Archives Release, exports with
   Developer ID (`scripts/ExportOptions.plist`), checks both signatures (Developer ID, hardened runtime,
   timestamp, and each side's code requirement), notarizes and staples the app, then builds, signs,
-  notarizes and staples `build/release/ActivityInspector-<version>.dmg` and runs `spctl`. Needs the
+  notarizes and staples `build/release/ActivityInspector-<version>.dmg` and runs `spctl`. It also checks
+  the exported app is the release, not the Dev build (bundle ID, the one helper plist and its label, no
+  Dev icon), and afterwards deletes the loose exported and staged copies of the app. Needs the
   "Developer ID Application: Peter A. Jones (8QQC2WMRHS)" certificate and the notarytool keychain profile
   `ActivityInspector`. **The helper target has `SKIP_INSTALL = YES`:** without it the archive also holds a
   loose `usr/local/bin` copy of the helper, becomes a "generic" archive, and export fails with
@@ -159,7 +172,8 @@ free/paid split. Peter's stated aim (2026-11-13) is "really cheap or free", to r
 **The privileged helper (`ActivityInspectorHelper` target, added 2026-11-13)** is a root launchd daemon
 registered with `SMAppService.daemon` (Activity Inspector ▸ Privileged Helper…; the user approves it under
 System Settings ▸ General ▸ Login Items & Extensions ▸ App Background Activity). The app reaches it
-over the XPC Mach service `ca.peter-jones.ActivityInspector.helper`.
+over the XPC Mach service `ca.peter-jones.ActivityInspector.helper` (Debug builds:
+`ca.peter-jones.ActivityInspector.dev.helper`).
 - `ActivityInspector/HelperShared.swift` is compiled into **both** targets (membership exception in the
   project): the XPC protocol, names, `HelperRules` (what the helper refuses) and the wire format.
   Change the protocol → bump `HelperConstants.protocolVersion`.
@@ -175,9 +189,11 @@ over the XPC Mach service `ca.peter-jones.ActivityInspector.helper`.
   target's Release has **Code Signing Inject Base Entitlements = No**; with Apple Development
   signing, Xcode otherwise adds `get-task-allow` to Release too and the Release helper would
   refuse its own app. Debug keeps it (Xcode's debugger needs it), so a Debug helper accepts it.
-- The bundle layout comes from two Copy Files phases on the app target: the helper into
-  Executables, `LaunchDaemons/ca.peter-jones.ActivityInspector.helper.plist` into Wrapper
-  `Contents/Library/LaunchDaemons`.
+- The bundle layout: a Copy Files phase puts the helper into Executables, and the Run Script phase
+  "Helper launchd plist" (`scripts/helper-launchd-plist.sh`) writes
+  `Contents/Library/LaunchDaemons/<bundle ID>.helper.plist` from `PRODUCT_BUNDLE_IDENTIFIER`, so each
+  configuration registers its own helper. `HelperConstants` derives the same names from
+  `isDebugBuild` (its only `#if DEBUG`); `AppNameTests` checks the two agree.
 - The app uses it only when the kernel says EPERM (`HelperBackedTerminator`, `ProcessSampler`'s
   denied PIDs). `ProcessSampler(privileged:)` defaults to **nil** so tests on fake PIDs never reach
   an installed helper; only `ProcessListModel`'s default passes `PrivilegedHelperClient.shared`.
@@ -194,15 +210,19 @@ over the XPC Mach service `ca.peter-jones.ActivityInspector.helper`.
 - **Task samples carry energy (protocol v4):** `ProcTaskSample.energyNanojoules` (`ri_energy_nj`) for
   the Power (W) column; the helper's `taskSamples` now runs `ProcInfo.sample`. The wire format is
   `[resident, cpu, energy?]`, and a 2-value payload from an older helper still decodes.
-- Check it's running: `launchctl print system/ca.peter-jones.ActivityInspector.helper`.
+- Check it's running: `launchctl print system/ca.peter-jones.ActivityInspector.helper` (Debug:
+  `….ActivityInspector.dev.helper`). The Dev helper needs its own approval in Login Items, and it accepts
+  debuggable clients. **Uninstall it (Privileged Helper…) before deleting DerivedData**, or its
+  registration points at a deleted app, the failure below.
 - **A helper registration belongs to the copy of the app that made it (2026-11-16).** The Debug build
-  and the Developer ID release share the bundle ID, and macOS's background-item records (`sfltool
+  and the Developer ID release then shared the bundle ID, and macOS's background-item records (`sfltool
   dumpbtm`, kept per section: your user, root, and -2) ended up pointing at different copies. launchd
   then failed every spawn with `EX_CONFIG` (78): first "Unable to get updated LWCR … No such process"
   (the registering Debug build had been deleted), then "copy_bundle_path … Invalid or missing Program".
   The app saw status "enabled", so Install Helper did nothing. Recovery: only one copy installed, then
   `sudo sfltool resetbtm` and a restart, then Install Helper. Read the logs with `/usr/bin/log`: in zsh,
-  plain `log` is a shell builtin and prints nothing useful. Planned fix: Debug gets its own bundle ID (TODO).
+  plain `log` is a shell builtin and prints nothing useful. Fixed the same day: Debug builds now have their
+  own bundle ID and helper label, and `scripts/release.sh` deletes its loose exported copies of the app.
 
 **Samplers are `actor`s**, take an injected `now: () -> UInt64` clock so rate arithmetic is
 testable, and guard every counter delta (counters wrap and devices reset; unsigned subtraction
@@ -294,14 +314,15 @@ anything by deleting the code it guards and watching it fail.
   result line, so `grep -cE '^Test case .* passed'` under-reports. Use `grep -c "' passed on '"`.
 - **`defaults` does NOT reach this app's preferences.** It resolves the domain to a container path
   (`~/Library/Containers/ca.peter-jones.ActivityInspector/…`) while the app reads
-  `~/Library/Preferences/ca.peter-jones.ActivityInspector.plist`. To change a stored `@AppStorage` value
+  `~/Library/Preferences/ca.peter-jones.ActivityInspector.plist` (Debug: `….ActivityInspector.dev.plist`). To change a stored `@AppStorage` value
   (e.g. `themeID`) from a script: quit the app, `killall cfprefsd`, THEN edit that plist with
   PlistBuddy. Killing cfprefsd *after* editing flushes its stale cache back over your change.
 
-- **The test host IS the app, and shares Peter's preferences.** Unit tests run inside the real
-  app process, reading `~/Library/Preferences/ca.peter-jones.ActivityInspector.plist`. Anything a test
-  reads from live window or app state (toolbar items, window frames, `@AppStorage` values) reflects
-  how Peter has customized his copy, not the app's defaults. `WindowToolbarTests` failed once
+- **The test host IS the app, and shares the Debug build's preferences.** Unit tests run inside the
+  real Debug app process, reading `~/Library/Preferences/ca.peter-jones.ActivityInspector.dev.plist`
+  (since 2026-11-16; before that, Peter's everyday copy's). Anything a test reads from live window or
+  app state (toolbar items, window frames, `@AppStorage` values) reflects how the Debug copy has been
+  customized, not the app's defaults. `WindowToolbarTests` failed once
   because he had removed Force Quit from his toolbar. Test against declared defaults (e.g.
   `toolbarDefaultItemIdentifiers`), never the user's current arrangement, and never write to
   those preferences from a test.

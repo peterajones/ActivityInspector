@@ -29,3 +29,16 @@ lit/unlit contrast.
    brighter than the unlit ones in every style.
 6. Save as `ActivityInspector.icon` and add it to the app target in Xcode (set the target's App Icon to
    it).
+
+## Dev icon (2026-11-16)
+
+Debug builds are a separate app (`ca.peter-jones.ActivityInspector.dev`, "Activity Inspector Dev") and
+use `ActivityInspector/ActivityInspectorDev.icon`, so they can be told apart from the release in the
+Dock and in Login Items. It is the release icon unchanged plus one more group on top, **Ribbon**:
+`layers/4-ribbon.svg`, an amber (`#FFBF33`) band at 45° across the top-right corner with "DEV" in
+near-black (`#0A0A0A`) Helvetica Neue Bold capitals. The letters are outlines, not SVG text, so Icon
+Composer can't substitute a font. The group has glass off and no shadow, so the band stays flat and
+crisp over the glassy meters. At 32 px the word is unreadable and only the amber corner shows;
+Peter chose that over an all-amber icon.
+
+To change the release icon, change both `.icon` bundles: the Dev one is a copy, not a reference.

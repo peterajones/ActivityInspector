@@ -5,9 +5,29 @@ import Darwin
 // two sides of the XPC connection must agree on these names and the message protocol.
 
 enum HelperConstants {
+    /// Whether this is a Debug build. The only `#if DEBUG` here: every name below derives from it.
+    static let isDebugBuild: Bool = {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }()
+
+    /// The app's bundle ID. Debug builds are a separate app (`.dev`) with their own helper label,
+    /// so a Debug build never shares macOS's background-item records with the release: on
+    /// 2026-11-16 a shared registration left launchd unable to start the helper (EX_CONFIG).
+    /// Must match the target's PRODUCT_BUNDLE_IDENTIFIER for each configuration.
+    static func appBundleID(debug: Bool) -> String {
+        "ca.peter-jones.ActivityInspector" + (debug ? ".dev" : "")
+    }
+
     /// launchd label and Mach service name; also the plist's file name without ".plist".
-    static let machServiceName = "ca.peter-jones.ActivityInspector.helper"
-    static let plistName = "ca.peter-jones.ActivityInspector.helper.plist"
+    /// `scripts/helper-launchd-plist.sh` writes that plist from the bundle ID at build time.
+    static func machServiceName(debug: Bool) -> String { appBundleID(debug: debug) + ".helper" }
+
+    static let machServiceName = machServiceName(debug: isDebugBuild)
+    static let plistName = machServiceName + ".plist"
     /// Bumped when the protocol changes, so the app can tell an out-of-date helper.
     static let protocolVersion = 4   // 2: inspect(pid:); 3: allPorts; 4: energy in task samples
 
@@ -18,18 +38,13 @@ enum HelperConstants {
     /// the same user attach to the app and inject code, which would then drive the helper.
     /// Debug builds (Xcode runs) carry that entitlement, so a Debug helper must accept it.
     static func clientRequirement(debug: Bool) -> String {
-        let base = #"anchor apple generic and identifier "ca.peter-jones.ActivityInspector" and certificate leaf[subject.OU] = "8QQC2WMRHS""#
+        let base = #"anchor apple generic and identifier ""# + appBundleID(debug: debug)
+            + #"" and certificate leaf[subject.OU] = "8QQC2WMRHS""#
         return debug ? base : base + #" and !entitlement["com.apple.security.get-task-allow"]"#
     }
 
     /// The requirement for this build of the helper.
-    static var clientRequirement: String {
-        #if DEBUG
-        clientRequirement(debug: true)
-        #else
-        clientRequirement(debug: false)
-        #endif
-    }
+    static var clientRequirement: String { clientRequirement(debug: isDebugBuild) }
     /// The only helper the app talks to: the one it ships, signed by the same team.
     static let helperRequirement =
         #"anchor apple generic and identifier "ActivityInspectorHelper" and certificate leaf[subject.OU] = "8QQC2WMRHS""#

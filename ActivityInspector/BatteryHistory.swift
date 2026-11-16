@@ -66,7 +66,8 @@ protocol BatteryHistoryStoring: Sendable {
 struct BatteryHistoryFile: BatteryHistoryStoring {
     let url: URL
 
-    /// ~/Library/Application Support/ca.peter-jones.ActivityInspector/battery-history.json
+    /// ~/Library/Application Support/<bundle ID>/battery-history.json: ca.peter-jones.ActivityInspector,
+    /// or ca.peter-jones.ActivityInspector.dev for Debug builds
     /// (the app isn't sandboxed, so this is the real Application Support, not a container).
     static var defaultURL: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
