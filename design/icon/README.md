@@ -27,5 +27,5 @@ lit/unlit contrast.
    a blur), specular on. Unlit group: little or no glass, no shadow.
 5. Check Default, Dark, Clear and Tinted in the preview; the lit segments should stay clearly
    brighter than the unlit ones in every style.
-6. Save as `macOSmonitor.icon` and add it to the app target in Xcode (set the target's App Icon to
+6. Save as `ActivityInspector.icon` and add it to the app target in Xcode (set the target's App Icon to
    it).

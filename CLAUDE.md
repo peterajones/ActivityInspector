@@ -1,4 +1,4 @@
-# macOSmonitor
+# Activity Inspector
 
 A macOS Activity-Monitor-style app: a Summary dashboard (the default surface), a live process
 table with an inspector, a Ports table, and a Performance section. A menu-bar item, and an
@@ -59,11 +59,11 @@ Apps and Services. New UI should follow these patterns rather than invent new on
 ## Build and test
 
 ```bash
-xcodebuild -project macOSmonitor.xcodeproj -scheme macOSmonitor -destination 'platform=macOS' build
-xcodebuild -project macOSmonitor.xcodeproj -scheme macOSmonitor -destination 'platform=macOS' -only-testing:macOSmonitorTests test
+xcodebuild -project ActivityInspector.xcodeproj -scheme ActivityInspector -destination 'platform=macOS' build
+xcodebuild -project ActivityInspector.xcodeproj -scheme ActivityInspector -destination 'platform=macOS' -only-testing:ActivityInspectorTests test
 ```
 
-**Always scope tests to `macOSmonitorTests`.** The `macOSmonitorUITests` target fails from
+**Always scope tests to `ActivityInspectorTests`.** The `ActivityInspectorUITests` target fails from
 the CLI with "Timed out enabling automation mode", so an unscoped run reports failure even
 when everything passes.
 
@@ -73,7 +73,7 @@ over running it twice for two different greps.
 ## Never edit `project.pbxproj`
 
 The project uses `PBXFileSystemSynchronizedRootGroup` (objectVersion 77): files under
-`macOSmonitor/` and `macOSmonitorTests/` join their targets **by directory, automatically**.
+`ActivityInspector/` and `ActivityInspectorTests/` join their targets **by directory, automatically**.
 There is no "add the file to the Xcode target" step — attempting one risks corrupting the
 project. Never `git add` the pbxproj either.
 
@@ -98,13 +98,18 @@ Each private read goes behind its own provider protocol and must return nil — 
 panel — when the interface is missing or changes shape, never crash. Re-run the
 real-hardware tests after each macOS update.
 
-**Public name: Activity Inspector (chosen 2026-11-15).** "Mac" and "macOS" are Apple trademarks and can't
-be in the product's name or domain, so "macOSmonitor" stays the internal name (code, repo, bundle ID)
-and the public face becomes Activity Inspector: Apple-native in feel, like Activity Monitor. Checked on
-2026-11-15: no product or trademark by that name found, all domains free. Peter registered
-activityinspector.com, and his trademark search (2026-11-16: CIPO, USPTO, WIPO Global Brand Database,
-Apple's trademark list, the App Stores, Setapp, GitHub) found no "Activity Inspector". He chose not to
-register the mark (C$500 in Canada). The public rename is clear to go ahead (TODO).
+**Name: Activity Inspector (chosen 2026-11-15; was macOSmonitor until 2026-11-16).** "Mac" and "macOS" are
+Apple trademarks, so the app was renamed everywhere: bundle ID `ca.peter-jones.ActivityInspector`, the helper's
+identifiers, the Xcode project, targets, folders, module and types. The dated specs and plans under `docs/`
+keep the old name: they are records. Checked on 2026-11-15: no product or trademark by that name, all
+domains free. Peter registered activityinspector.com; his trademark search (2026-11-16: CIPO, USPTO, WIPO
+Global Brand Database, Apple's trademark list, the App Stores, Setapp, GitHub) found no "Activity Inspector".
+He chose not to register the mark (C$500 in Canada).
+- The app target's `PRODUCT_NAME` is "Activity Inspector", with a space (the .app, executable, app menu, Login
+  Items), so `PRODUCT_MODULE_NAME = ActivityInspector` keeps the module name, and the tests' `TEST_HOST`
+  points at "Activity Inspector.app". Text the user reads names the app through `AppName.display`.
+- `AppNameTests` checks the bundle's name and ID, the embedded helper, and that no app, helper or launchd
+  source still says the old name. The running process is `Activity Inspector`: `pgrep -x "Activity Inspector"`.
 
 **Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
 Developer ID and notarized, from his own site. **Pricing is not decided** (TODO): there is no agreed
@@ -142,16 +147,16 @@ free/paid split. Peter's stated aim (2026-11-13) is "really cheap or free", to r
 - So a sandboxed build can only be a **monitor**, not a manager: no Quit/Force Quit, Ports, Energy,
   clock speeds or temperatures (thermal state only), no helper, read-only Startup Apps.
 
-**The privileged helper (`macOSmonitorHelper` target, added 2026-11-13)** is a root launchd daemon
-registered with `SMAppService.daemon` (macOSmonitor ▸ Privileged Helper…; the user approves it under
+**The privileged helper (`ActivityInspectorHelper` target, added 2026-11-13)** is a root launchd daemon
+registered with `SMAppService.daemon` (Activity Inspector ▸ Privileged Helper…; the user approves it under
 System Settings ▸ General ▸ Login Items & Extensions ▸ App Background Activity). The app reaches it
-over the XPC Mach service `ca.peter-jones.macOSmonitor.helper`.
-- `macOSmonitor/HelperShared.swift` is compiled into **both** targets (membership exception in the
+over the XPC Mach service `ca.peter-jones.ActivityInspector.helper`.
+- `ActivityInspector/HelperShared.swift` is compiled into **both** targets (membership exception in the
   project): the XPC protocol, names, `HelperRules` (what the helper refuses) and the wire format.
   Change the protocol → bump `HelperConstants.protocolVersion`.
 - Each side checks the other's code signature (`HelperConstants.clientRequirement` /
   `helperRequirement`, team `8QQC2WMRHS`). **The helper's signing identifier is
-  `macOSmonitorHelper`** (the product name), not its bundle ID: it has no embedded Info.plist.
+  `ActivityInspectorHelper`** (the product name), not its bundle ID: it has no embedded Info.plist.
   Test a requirement against the built binary with `codesign -v -R='…' <path>`.
 - **Security rules (from the 2026-11-13 security review):** the helper accepts a connection only
   from an **admin** user (`HelperRules.isAdmin`, from the connection's audit-token uid), so a
@@ -162,7 +167,7 @@ over the XPC Mach service `ca.peter-jones.macOSmonitor.helper`.
   signing, Xcode otherwise adds `get-task-allow` to Release too and the Release helper would
   refuse its own app. Debug keeps it (Xcode's debugger needs it), so a Debug helper accepts it.
 - The bundle layout comes from two Copy Files phases on the app target: the helper into
-  Executables, `LaunchDaemons/ca.peter-jones.macOSmonitor.helper.plist` into Wrapper
+  Executables, `LaunchDaemons/ca.peter-jones.ActivityInspector.helper.plist` into Wrapper
   `Contents/Library/LaunchDaemons`.
 - The app uses it only when the kernel says EPERM (`HelperBackedTerminator`, `ProcessSampler`'s
   denied PIDs). `ProcessSampler(privileged:)` defaults to **nil** so tests on fake PIDs never reach
@@ -180,7 +185,7 @@ over the XPC Mach service `ca.peter-jones.macOSmonitor.helper`.
 - **Task samples carry energy (protocol v4):** `ProcTaskSample.energyNanojoules` (`ri_energy_nj`) for
   the Power (W) column; the helper's `taskSamples` now runs `ProcInfo.sample`. The wire format is
   `[resident, cpu, energy?]`, and a 2-value payload from an older helper still decodes.
-- Check it's running: `launchctl print system/ca.peter-jones.macOSmonitor.helper`.
+- Check it's running: `launchctl print system/ca.peter-jones.ActivityInspector.helper`.
 
 **Samplers are `actor`s**, take an injected `now: () -> UInt64` clock so rate arithmetic is
 testable, and guard every counter delta (counters wrap and devices reset; unsigned subtraction
@@ -188,7 +193,7 @@ traps in Swift).
 
 **Models are `@MainActor @Observable`** and own a sampler plus a ~1 Hz `run()` loop.
 `ProcessListModel` (process table) and `BatteryModel` are owned per window by `ContentView`.
-`VitalsModel` (performance metrics) is owned by the **app** (`macOSmonitorApp`, loop started
+`VitalsModel` (performance metrics) is owned by the **app** (`ActivityInspectorApp`, loop started
 once in `init`) and shared by every window and the menu-bar item: vitals have no per-window
 state. Keep `ProcessListModel` per window — it holds the selection, and sharing it across
 windows would let one window act on another's selected process. The menu-bar panel has its
@@ -271,13 +276,13 @@ anything by deleting the code it guards and watching it fail.
 - **Count test results with an UNANCHORED grep.** Parallel test output interleaves and can split a
   result line, so `grep -cE '^Test case .* passed'` under-reports. Use `grep -c "' passed on '"`.
 - **`defaults` does NOT reach this app's preferences.** It resolves the domain to a container path
-  (`~/Library/Containers/ca.peter-jones.macOSmonitor/…`) while the app reads
-  `~/Library/Preferences/ca.peter-jones.macOSmonitor.plist`. To change a stored `@AppStorage` value
+  (`~/Library/Containers/ca.peter-jones.ActivityInspector/…`) while the app reads
+  `~/Library/Preferences/ca.peter-jones.ActivityInspector.plist`. To change a stored `@AppStorage` value
   (e.g. `themeID`) from a script: quit the app, `killall cfprefsd`, THEN edit that plist with
   PlistBuddy. Killing cfprefsd *after* editing flushes its stale cache back over your change.
 
 - **The test host IS the app, and shares Peter's preferences.** Unit tests run inside the real
-  app process, reading `~/Library/Preferences/ca.peter-jones.macOSmonitor.plist`. Anything a test
+  app process, reading `~/Library/Preferences/ca.peter-jones.ActivityInspector.plist`. Anything a test
   reads from live window or app state (toolbar items, window frames, `@AppStorage` values) reflects
   how Peter has customized his copy, not the app's defaults. `WindowToolbarTests` failed once
   because he had removed Force Quit from his toolbar. Test against declared defaults (e.g.

@@ -1,0 +1,84 @@
+//
+//  main.swift
+//  ActivityInspectorHelper
+//
+//  The root half of ActivityInspector: a launchd daemon (registered by the app with
+//  SMAppService) that reads and signals processes the app's own user can't. It obeys only
+//  the app, checked by code signature on every connection (HelperConstants.clientRequirement),
+//  and only within HelperRules. HelperShared.swift is compiled into both targets.
+//
+
+import Foundation
+import Darwin
+
+final class HelperService: NSObject, PrivilegedHelperProtocol, @unchecked Sendable {
+    func protocolVersion(reply: @escaping (Int) -> Void) {
+        reply(HelperConstants.protocolVersion)
+    }
+
+    func sendSignal(_ signal: Int32, toPID pid: Int32, reply: @escaping (Int32) -> Void) {
+        if let refusal = HelperRules.refusal(signal: signal, pid: pid, helperPID: getpid()) {
+            reply(refusal)
+            return
+        }
+        reply(kill(pid, signal) == 0 ? 0 : errno)
+    }
+
+    func taskSamples(forPIDs pids: [NSNumber], reply: @escaping (Data) -> Void) {
+        // The app's own reader, run as root: memory, CPU time and energy.
+        let proc = ProcInfo()
+        var samples: [pid_t: ProcTaskSample] = [:]
+        for number in pids.prefix(4096) {
+            let pid = number.int32Value
+            samples[pid] = proc.sample(pid: pid)
+        }
+        reply(HelperWire.encodeSamples(samples))
+    }
+}
+
+extension HelperService {
+    /// The same readers the app uses for its own processes, run as root.
+    func inspect(pid: Int32, reply: @escaping (Data) -> Void) {
+        let proc = ProcInfo()
+        let inspection = PrivilegedInspection(details: proc.details(pid: pid),
+                                              ports: proc.ports(pid: pid),
+                                              commandLine: proc.commandLine(pid: pid),
+                                              openFiles: proc.openFiles(pid: pid),
+                                              threads: proc.threads(pid: pid),
+                                              usage: proc.usage(pid: pid))
+        reply(HelperWire.encodeInspection(inspection))
+    }
+
+    func allPorts(reply: @escaping (Data) -> Void) {
+        let proc = ProcInfo()
+        var ports: [pid_t: [ProcessPort]] = [:]
+        for pid in proc.listPIDs() {
+            let sockets = proc.ports(pid: pid)
+            if !sockets.isEmpty { ports[pid] = sockets }
+        }
+        reply(HelperWire.encodePorts(ports))
+    }
+}
+
+final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
+    private let service = HelperService()
+
+    func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
+        // Who is asking, from the kernel's audit token (not anything the caller says): only an
+        // admin may use root's power over other processes.
+        guard HelperRules.isAdmin(uid: connection.effectiveUserIdentifier) else { return false }
+        // Every message on this connection is checked against the app's signature; a caller
+        // that isn't ActivityInspector signed by Peter's team is cut off before any method runs.
+        connection.setCodeSigningRequirement(HelperConstants.clientRequirement)
+        connection.exportedInterface = NSXPCInterface(with: PrivilegedHelperProtocol.self)
+        connection.exportedObject = service
+        connection.resume()
+        return true
+    }
+}
+
+let delegate = ListenerDelegate()
+let listener = NSXPCListener(machServiceName: HelperConstants.machServiceName)
+listener.delegate = delegate
+listener.resume()
+dispatchMain()

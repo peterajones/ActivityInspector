@@ -1,0 +1,283 @@
+import Testing
+import Foundation
+@testable import ActivityInspector
+
+/// System Info is built on `system_profiler -json`: a catalog of its data types, a parser that
+/// turns each into a tree with Apple's own labels, and a model that loads them on demand.
+struct SystemInfoCatalogTests {
+    @Test func threeCategoriesInOrder() {
+        #expect(SystemInfoCategory.allCases.map(\.title) == ["Hardware", "Network", "Software"])
+    }
+
+    @Test func everyItemIsADistinctDataTypeInSomeCategory() {
+        let ids = SystemInfoItem.catalog.map(\.id)
+        #expect(Set(ids).count == ids.count)
+        #expect(ids.allSatisfy { $0.hasPrefix("SP") && $0.hasSuffix("DataType") })
+        for category in SystemInfoCategory.allCases {
+            #expect(!SystemInfoItem.catalog.filter { $0.category == category }.isEmpty, "\(category)")
+        }
+        #expect(SystemInfoItem.catalog.first?.id == "SPHardwareDataType")
+    }
+
+    @Test func theSlowTypesAreMarkedSoTheyAreLoadedOnlyWhenAsked() {
+        let slow = Set(SystemInfoItem.catalog.filter(\.isSlow).map(\.id))
+        #expect(slow == ["SPAirPortDataType", "SPFontsDataType", "SPLogsDataType",
+                         "SPApplicationsDataType", "SPFrameworksDataType"])
+        #expect(SystemInfoItem.catalog.first { $0.id == "SPAirPortDataType" }?.expectedSeconds == 20)
+    }
+}
+
+struct ProfilerParserTests {
+    private let labels = ProfilerLabels(table: [
+        "coreaudio_device": "Devices",
+        "coreaudio_device_manufacturer": "Manufacturer",
+        "coreaudio_device_srate": "Current SampleRate",
+        "coreaudio_device_transport": "Transport",
+        "coreaudio_device_type_usb": "USB",
+    ])
+
+    private func parse(_ json: String) -> [ProfilerNode]? {
+        ProfilerParser.parse(Data(json.utf8), type: "SPAudioDataType", labels: labels)
+    }
+
+    @Test func keysAndValuesUseApplesLabels() throws {
+        let nodes = try #require(parse("""
+            {"SPAudioDataType":[{"_name":"coreaudio_device","_items":[{"_name":"Studio Display Speakers",
+              "coreaudio_device_manufacturer":"Apple Inc.","coreaudio_device_srate":48000,
+              "coreaudio_device_transport":"coreaudio_device_type_usb"}]}]}
+            """))
+        #expect(nodes.map(\.title) == ["Devices"])
+        let speakers = try #require(nodes.first?.children.first)
+        #expect(speakers.title == "Studio Display Speakers")
+        // Leaves alphabetically by label; the transport's value is itself translated.
+        #expect(speakers.children.map(\.title) == ["Current SampleRate", "Manufacturer", "Transport"])
+        #expect(speakers.children.map(\.value) == ["48000", "Apple Inc.", "USB"])
+    }
+
+    @Test func internalKeysAreSkipped() throws {
+        let nodes = try #require(parse("""
+            {"SPAudioDataType":[{"_name":"Thing","_properties":{"x":1},"_order":"1","coreaudio_device_manufacturer":"A"}]}
+            """))
+        #expect(nodes.first?.children.map(\.title) == ["Manufacturer"])
+    }
+
+    @Test func nestedDictionariesBecomeGroupsAndListsJoin() throws {
+        let nodes = try #require(parse("""
+            {"SPAudioDataType":[{"_name":"Thing","ipv4":{"addresses":["10.0.0.2","10.0.0.3"]},"name":"x"}]}
+            """))
+        let thing = try #require(nodes.first)
+        // Plain values before groups.
+        #expect(thing.children.map(\.title) == ["Name", "Ipv4"])
+        let group = thing.children[1]
+        #expect(group.value == nil)
+        #expect(group.children.first?.title == "Addresses")
+        #expect(group.children.first?.value == "10.0.0.2, 10.0.0.3")
+    }
+
+    @Test func aNamelessTopItemTakesThePagesName() throws {
+        let nodes = try #require(ProfilerParser.parse(Data(#"{"SPBluetoothDataType":[{"x":"1"}]}"#.utf8),
+                                                       type: "SPBluetoothDataType", labels: labels))
+        #expect(nodes.first?.title == "Bluetooth")
+    }
+
+    @Test func theCoreCountReadsAsAppleWritesIt() {
+        #expect(ProfilerParser.coreCountText("proc 12:0:6:6") == "12 (6 Performance and 6 Efficiency)")
+        #expect(ProfilerParser.coreCountText("proc 16:0:12:4") == "16 (12 Performance and 4 Efficiency)")
+        #expect(ProfilerParser.coreCountText("8") == nil)
+        #expect(ProfilerParser.coreCountText("proc 12:0:6") == nil)
+    }
+
+    @Test func unknownKeysAreTidiedNotShownRaw() {
+        #expect(labels.label("some_unknown_key") == "Some unknown key")
+        #expect(labels.label("Already Nice") == "Already Nice")
+        #expect(labels.label("platform_UUID") == "Platform UUID")
+    }
+
+    @Test func anEmptyTypeHasNoNodes() {
+        #expect(parse(#"{"SPAudioDataType":[]}"#) == [])
+    }
+
+    @Test func unreadableOutputIsNil() {
+        #expect(parse("not json") == nil)
+        #expect(parse(#"{"SomethingElse":[]}"#) == nil)
+    }
+
+    @Test func identifyingValuesAreMarkedSensitive() throws {
+        for key in ["serial_number", "platform_UUID", "provisioning_UDID", "spethernet_mac_address",
+                    "MAC Address", "hardware_address", "controller_address", "device_address",
+                    "sppower_battery_serial_number", "USBDeviceKeySerialNumber", "user_name"] {
+            #expect(ProfilerNode.isSensitive(key: key), "\(key)")
+        }
+        // The network's own addresses, and the Mac's name (security review, 2026-11-15).
+        for key in ["local_host_name", "ip_address", "Addresses", "Router", "ServerAddress", "ServerAddresses",
+                    "ARPResolvedIPAddress", "dhcp_routers", "dhcp_domain_name_servers", "dhcp_server_identifier"] {
+            #expect(ProfilerNode.isSensitive(key: key), "\(key)")
+        }
+        for key in ["spext_load_address", "coreaudio_device_srate", "machine_model", "DestinationAddress"] {
+            #expect(!ProfilerNode.isSensitive(key: key), "\(key)")
+        }
+        let nodes = try #require(parse(#"{"SPAudioDataType":[{"_name":"Mac","serial_number":"ABC","chip":"M3"}]}"#))
+        #expect(nodes.first?.children.first { $0.title == "Serial number" }?.isSensitive == true)
+        #expect(nodes.first?.children.first { $0.title == "Chip" }?.isSensitive == false)
+    }
+
+    /// Masking follows the key wherever it sits: inside a group, in a device list, or as a list.
+    @Test func identifyingValuesAreMaskedAtAnyDepth() throws {
+        let nodes = try #require(parse("""
+            {"SPAudioDataType":[{"_name":"Mac","battery":{"sppower_battery_serial_number":"F5D"},
+              "mac_address":["aa:bb","cc:dd"],
+              "_items":[{"_name":"Mouse","device_address":"11-22","device_minorType":"Mouse"}]}]}
+            """))
+        let mac = try #require(nodes.first)
+        func leaf(_ path: [String]) -> ProfilerNode? {
+            var node: ProfilerNode? = mac
+            for title in path { node = node?.children.first { $0.title == title } }
+            return node
+        }
+        #expect(leaf(["Battery", "Sppower battery serial number"])?.isSensitive == true)
+        #expect(leaf(["Mac address"])?.isSensitive == true)
+        #expect(leaf(["Mac address"])?.value == "aa:bb, cc:dd")
+        #expect(leaf(["Mouse", "Device address"])?.isSensitive == true)
+        #expect(leaf(["Mouse", "Device minorType"])?.isSensitive == false)
+    }
+
+    /// Nearby Wi-Fi networks arrive as items named after themselves: those titles are marked.
+    @Test func wiFiNetworkNamesAreMarkedAsSensitiveTitles() throws {
+        let nodes = try #require(ProfilerParser.parse(Data("""
+            {"SPAirPortDataType":[{"spairport_airport_interfaces":[{"_name":"en0",
+              "spairport_current_network_information":{"_name":"HomeNet","spairport_network_channel":"36"},
+              "spairport_airport_other_local_wireless_networks":[{"_name":"Neighbour","spairport_network_channel":"1"}]}]}]}
+            """.utf8), type: "SPAirPortDataType", labels: labels))
+        var titles: [(String, Bool)] = []
+        func walk(_ node: ProfilerNode) { titles.append((node.title, node.titleIsSensitive)); node.children.forEach(walk) }
+        nodes.forEach(walk)
+        #expect(!titles.contains { $0.0 == "HomeNet" })             // a nested group: titled by its key
+        #expect(titles.first { $0.0 == "Neighbour" }?.1 == true)
+        #expect(titles.first { $0.0 == "en0" }?.1 == false)
+    }
+
+    /// Hidden values all look alike, so the dots don't give away even a value's length.
+    @Test func aMaskedValueShowsOnlyDotsUntilRevealed() {
+        #expect(MaskedValue.shown("C02XK1ABJG5J", revealed: false) == "••••••••")
+        #expect(MaskedValue.shown("ab", revealed: false) == "••••••••")
+        #expect(MaskedValue.shown("C02XK1ABJG5J", revealed: true) == "C02XK1ABJG5J")
+    }
+}
+
+/// Reading reporters' label tables from a folder laid out like /System/Library/SystemProfiler.
+struct ProfilerLabelsLoadingTests {
+    private func folder(_ reporters: [String: NSDictionary]) throws -> URL {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("labels-\(UUID().uuidString)")
+        for (name, tables) in reporters {
+            let resources = root.appendingPathComponent("\(name)/Contents/Resources")
+            try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+            try tables.write(to: resources.appendingPathComponent("Localizable.loctable"))
+        }
+        return root
+    }
+
+    /// The tables sit beside bookkeeping such as "LocProvenance", whose values aren't strings.
+    private let audio: NSDictionary = ["LocProvenance": ["en": 1, "fr": 2],
+                                       "en": ["k_audio": "Audio", "k_shared": "Shared (audio)"],
+                                       "fr": ["k_audio": "Son"]]
+    private let power: NSDictionary = ["en": ["k_power": "Power", "k_shared": "Shared (power)"]]
+
+    @Test func eachReporterUsesTheFirstLanguageItHas() throws {
+        let root = try folder(["Audio.spreporter": audio, "Power.spreporter": power])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let labels = ProfilerLabels.load(root: root, languages: ["fr-CA"])
+        #expect(labels.label("k_audio") == "Son")        // "fr-CA" falls back to "fr"
+        #expect(labels.label("k_power") == "Power")      // no French table: English
+    }
+
+    @Test func aLanguageNoReporterHasFallsBackToEnglish() throws {
+        let root = try folder(["Audio.spreporter": audio, "Power.spreporter": power])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let labels = ProfilerLabels.load(root: root, languages: ["de"])
+        #expect(labels.label("k_audio") == "Audio")
+        #expect(labels.label("k_power") == "Power")
+        #expect(["Shared (audio)", "Shared (power)"].contains(labels.label("k_shared")))
+    }
+
+    @Test func aKeyNoTableHasIsTidied() throws {
+        let root = try folder(["Audio.spreporter": audio, "Notes.txt": ["en": ["k_other": "Ignored"]]])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let labels = ProfilerLabels.load(root: root, languages: ["en"])
+        #expect(labels.label("k_other") == "K other")    // only .spreporter folders count
+        #expect(labels.label("spaudio_missing") == "Spaudio missing")
+    }
+
+    @Test func noFolderMeansNoLabelsNotACrash() {
+        let labels = ProfilerLabels.load(root: URL(fileURLWithPath: "/nonexistent-\(UUID().uuidString)"),
+                                         languages: ["en"])
+        #expect(labels.table.isEmpty)
+    }
+}
+
+
+/// Runs against this Mac's own label tables.
+struct ProfilerLabelsSystemTests {
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: "/System/Library/SystemProfiler")))
+    func appleLabelTablesLoad() {
+        let labels = ProfilerLabels.system(languages: ["en"])
+        #expect(labels.label("coreaudio_device_manufacturer") == "Manufacturer")
+        #expect(labels.label("coreaudio_device_output") == "Output Channels")
+    }
+}
+
+final class FakeProfilerRunner: SystemProfilerRunning, @unchecked Sendable {
+    private let lock = NSLock()
+    var outputs: [String: Data] = [:]
+    private var _calls: [String] = []
+    var calls: [String] { lock.withLock { _calls } }
+    func run(_ type: String) async -> Data? {
+        lock.withLock { _calls.append(type) }
+        return outputs[type]
+    }
+}
+
+@MainActor
+struct SystemInfoModelTests {
+    private func json(_ type: String, items: String) -> Data { Data(#"{"\#(type)":[\#(items)]}"#.utf8) }
+
+    private func model() -> (SystemInfoModel, FakeProfilerRunner) {
+        let runner = FakeProfilerRunner()
+        for item in SystemInfoItem.catalog {
+            runner.outputs[item.id] = json(item.id, items: #"{"_name":"x","a":"1"}"#)
+        }
+        runner.outputs["SPFibreChannelDataType"] = json("SPFibreChannelDataType", items: "")
+        return (SystemInfoModel(runner: runner, labels: ProfilerLabels(table: [:])), runner)
+    }
+
+    @Test func preloadReadsTheFastTypesOnlyAndHidesEmptyOnes() async {
+        let (model, runner) = model()
+        await model.preload()
+        let slow = Set(SystemInfoItem.catalog.filter(\.isSlow).map(\.id))
+        #expect(Set(runner.calls).isDisjoint(with: slow))
+        #expect(runner.calls.count == SystemInfoItem.catalog.count - slow.count)
+        let visible = SystemInfoCategory.allCases.flatMap { model.visibleItems(in: $0) }.map(\.id)
+        #expect(!visible.contains("SPFibreChannelDataType"))      // empty on this Mac
+        #expect(visible.contains("SPAirPortDataType"))            // slow: listed, not yet read
+    }
+
+    @Test func anItemIsReadOnceThenReloadReadsAgain() async {
+        let (model, runner) = model()
+        await model.load("SPAirPortDataType")
+        await model.load("SPAirPortDataType")
+        #expect(runner.calls.filter { $0 == "SPAirPortDataType" }.count == 1)
+        guard case .loaded(let nodes) = model.state(of: "SPAirPortDataType") else {
+            Issue.record("not loaded"); return
+        }
+        #expect(nodes.first?.title == "x")
+        await model.load("SPAirPortDataType", force: true)
+        #expect(runner.calls.filter { $0 == "SPAirPortDataType" }.count == 2)
+    }
+
+    @Test func aFailedReadSaysSoAndStaysListed() async {
+        let (model, runner) = model()
+        runner.outputs["SPAudioDataType"] = nil
+        await model.load("SPAudioDataType")
+        #expect(model.state(of: "SPAudioDataType") == .failed)
+        #expect(model.visibleItems(in: .hardware).contains { $0.id == "SPAudioDataType" })
+    }
+}
