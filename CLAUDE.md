@@ -101,8 +101,10 @@ real-hardware tests after each macOS update.
 **Public name: Activity Inspector (chosen 2026-11-15).** "Mac" and "macOS" are Apple trademarks and can't
 be in the product's name or domain, so "macOSmonitor" stays the internal name (code, repo, bundle ID)
 and the public face becomes Activity Inspector: Apple-native in feel, like Activity Monitor. Checked on
-2026-11-15: no product or trademark by that name found, all domains free. Peter is doing the trademark
-search and registering activityinspector.com; the public rename waits for that (TODO).
+2026-11-15: no product or trademark by that name found, all domains free. Peter registered
+activityinspector.com, and his trademark search (2026-11-16: CIPO, USPTO, WIPO Global Brand Database,
+Apple's trademark list, the App Stores, Setapp, GitHub) found no "Activity Inspector". He chose not to
+register the mark (C$500 in Canada). The public rename is clear to go ahead (TODO).
 
 **Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
 Developer ID and notarized, from his own site, with a free tier and paid features on top (like TMOG,
