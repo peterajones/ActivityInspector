@@ -9,7 +9,6 @@ _Single source of truth for unfinished work in this project. Tick an item when i
 - [ ] Peter: install from the notarized DMG; check it opens with no warning, and that the privileged helper approves and works under the Developer ID signature (from: release setup, 2026-11-16)
 
 ## Later
-- [x] Rename the app's public face to Activity Inspector once the trademark search is clear: display name, bundle name, menus, About box, window titles; the code and repo can stay macOSmonitor (from: naming, 2026-11-15)
 - [ ] Decide whether to add a Disk Space page: what is using the disk, by folder; scanning is slow, so it needs care (moved to Later by Peter, 2026-11-15) (from: candidates list, 2026-11-14)
 - [ ] Consider removing apps from Installed Apps (move to Trash, with a confirmation) (from: Peter, 2026-11-15)
 - [ ] Distribute outside the App Store, after pricing is decided: the download page on activityinspector.com, payments and licences if it isn't free, and how updates reach users (no third-party dependencies, so not Sparkle unless that rule changes) (from: Peter, 2026-11-15)
