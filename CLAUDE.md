@@ -107,8 +107,8 @@ Apple's trademark list, the App Stores, Setapp, GitHub) found no "Activity Inspe
 register the mark (C$500 in Canada). The public rename is clear to go ahead (TODO).
 
 **Distribution: the full app, outside the App Store (decided 2026-11-15).** Signed with Peter's
-Developer ID and notarized, from his own site, with a free tier and paid features on top (like TMOG,
-which inspired the design). The split and the licensing are still to decide (TODO).
+Developer ID and notarized, from his own site. **Pricing is not decided** (TODO): there is no agreed
+free/paid split. Peter's stated aim (2026-11-13) is "really cheap or free", to reinforce his presence as a developer.
 - **The App Store edition was dropped (2026-11-15).** The plan from 2026-11-13 was a sandboxed,
   public-API build beside the full one. Peter reviewed it built and judged it "not a sellable product":
   every page lost the one thing that made it worth opening (quitting, switching startup items,
